@@ -59,7 +59,7 @@ attempt 3 raw: "{\"clauses\": [{\"literals\": [...]}]}"  -> SUCCESS  (stricter p
 
 [`qverify/translator/llm.py`](../qverify/translator/llm.py) defines the `TranslationBackend` Protocol. Two implementations ship today:
 
-- `GemmaE2BBackend` — production. Lazy-loads `google/gemma-3n-E2B-it` on the first `generate()` call; never at import time. Uses bfloat16 + `device_map="auto"` and greedy decoding for determinism.
+- `GemmaE2BBackend` — production. Lazy-loads Gemma 4 E2B (gated; default id is `qverify.utils.models.TRANSLATOR_MODEL_ID`, currently `google/gemma-4-E2B-it`) on the first `generate()` call; never at import time. Accept the Gemma license at https://huggingface.co/google/gemma-4-E2B-it before first use. Uses bfloat16 + `device_map="auto"` and greedy decoding for determinism.
 - `StubBackend(responses: dict[str, str])` — for tests. Returns canned responses keyed by exact prompt.
 
 To swap in a different backend (e.g. an OpenAI-compatible server, a vLLM endpoint, or a different Gemma variant) implement the two-method Protocol and pass the instance to `Translator(backend=...)`.
@@ -75,10 +75,12 @@ pip install -e ".[dev]"
 
 A successful run reports two passing tests in roughly 30–90 seconds on a single 12 GB+ GPU. The first call downloads the model weights (~5 GB) into the local HuggingFace cache; subsequent runs are warm.
 
-If `google/gemma-3n-E2B-it` is not yet available on HuggingFace at the time of running, override the model id when constructing the backend:
+If you need to pin to a specific revision or substitute a different Gemma E2B-class instruct model, override the model id when constructing the backend:
 
 ```python
-GemmaE2BBackend(model_id="google/gemma-3n-E2B-it-some-revision")
+from qverify.translator.llm import GemmaE2BBackend
+
+GemmaE2BBackend(model_id="google/gemma-4-E2B-it@<revision>")
 ```
 
 ## Known limitations (Phase 2)

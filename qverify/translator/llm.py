@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any, Protocol, runtime_checkable
 
 from qverify.utils.logging import get_logger
+from qverify.utils.models import TRANSLATOR_MODEL_ID
 
 
 @runtime_checkable
@@ -22,11 +23,9 @@ class GemmaE2BBackend:
     does not pull torch into memory or hit HuggingFace.
     """
 
-    DEFAULT_MODEL_ID = "google/gemma-3n-E2B-it"
-
     def __init__(
         self,
-        model_id: str = DEFAULT_MODEL_ID,
+        model_id: str = TRANSLATOR_MODEL_ID,
         device: str = "auto",
     ) -> None:
         self._model_id: str = model_id

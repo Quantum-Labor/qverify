@@ -4,10 +4,11 @@ Marked ``slow`` and ``gpu`` — excluded from CI. Run manually on a CUDA host:
 
     .venv/bin/pytest tests/test_translator_e2b_smoke.py -v -m "slow and gpu"
 
-Loads google/gemma-3n-E2B-it (or whatever id ``GemmaE2BBackend`` defaults to)
-and translates two well-known statements. Asserts that the output is a valid
-CNF; does not assert specific predicate names because a chat-tuned LLM may
-choose ``Bird`` vs ``IsBird`` vs ``IsABird`` — all of those are correct.
+Loads the model id from ``qverify.utils.models.TRANSLATOR_MODEL_ID`` (Gemma 4
+E2B instruct, gated) and translates two well-known statements. Asserts that
+the output is a valid CNF; does not assert specific predicate names because a
+chat-tuned LLM may choose ``Bird`` vs ``IsBird`` vs ``IsABird`` — all are
+correct.
 """
 
 from __future__ import annotations
@@ -16,13 +17,14 @@ import pytest
 
 from qverify.translator import CNF, Translator
 from qverify.translator.llm import GemmaE2BBackend
+from qverify.utils.models import TRANSLATOR_MODEL_ID
 
 pytestmark = [pytest.mark.slow, pytest.mark.gpu]
 
 
 @pytest.fixture(scope="module")
 def translator() -> Translator:
-    backend = GemmaE2BBackend()
+    backend = GemmaE2BBackend(model_id=TRANSLATOR_MODEL_ID)
     return Translator(backend, max_retries=3)
 
 

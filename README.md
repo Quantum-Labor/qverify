@@ -46,10 +46,20 @@ See [`docs/architecture.md`](docs/architecture.md) for the full data-flow diagra
 
 Benchmark results will be published in Phase 6. See `docs/benchmarks.md` (coming) for methodology.
 
+## Models
+
+QVerify uses three Gemma 4 instruct models, all centralized in [`qverify/utils/models.py`](qverify/utils/models.py). All three are gated on Hugging Face — accept the [Gemma Terms of Use](https://ai.google.dev/gemma/terms) on each model page before first download.
+
+| Role | Model id | Notes |
+|---|---|---|
+| Translator | `google/gemma-4-E2B-it` | Small; called once per reasoning step to produce CNF |
+| Reasoner (baseline) | `google/gemma-4-E4B-it` | Default thinking-mode model; fits on a single 24 GB GPU in bf16 |
+| Reasoner (show-off) | `google/gemma-4-26B-A4B-it` | MoE model used for headline benchmark numbers; multi-GPU |
+
 ## Hardware requirements
 
 - Python 3.11+
-- 1× NVIDIA GPU with 12 GB+ VRAM for Gemma 4 E4B inference
+- 1× NVIDIA GPU with 12 GB+ VRAM for Gemma 4 E2B / E4B inference
 - 3× GPU with 24 GB+ VRAM each for Gemma 4 26B MoE benchmarks (optional)
 - Free IBM Quantum Open Plan account for hardware runs (optional — the PennyLane simulator works without one)
 
