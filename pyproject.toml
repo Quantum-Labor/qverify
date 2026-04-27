@@ -63,9 +63,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/qcoproc/qverify"
-Repository = "https://github.com/qcoproc/qverify"
-Issues = "https://github.com/qcoproc/qverify/issues"
+Homepage = "https://github.com/Quantum-Labor/qverify"
+Repository = "https://github.com/Quantum-Labor/qverify"
+Issues = "https://github.com/Quantum-Labor/qverify/issues"
 
 [tool.setuptools.packages.find]
 include = ["qverify*"]

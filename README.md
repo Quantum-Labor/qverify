@@ -9,7 +9,7 @@
 [![License](https://img.shields.io/badge/license-Apache%202.0-blue.svg)](LICENSE)
 [![Python](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![Tests](https://github.com/qcoproc/qverify/actions/workflows/tests.yml/badge.svg)](https://github.com/qcoproc/qverify/actions/workflows/tests.yml)
+[![Tests](https://github.com/Quantum-Labor/qverify/actions/workflows/tests.yml/badge.svg)](https://github.com/Quantum-Labor/qverify/actions/workflows/tests.yml)
 
 </div>
 
@@ -30,7 +30,7 @@ The result: thinking-mode LLMs that catch their own logical errors, verified by 
 ## Quick start
 
 ```bash
-git clone https://github.com/qcoproc/qverify.git
+git clone https://github.com/Quantum-Labor/qverify.git
 cd qverify
 pip install -e ".[dev]"
 cp .env.example .env
@@ -60,7 +60,7 @@ Benchmark results will be published in Phase 6. See `docs/benchmarks.md` (coming
   author  = {Brinza, Serghei},
   title   = {QVerify: Quantum-Verified Reasoning for Thinking-Mode LLMs},
   year    = {2026},
-  url     = {https://github.com/qcoproc/qverify},
+  url     = {https://github.com/Quantum-Labor/qverify},
   version = {0.1.0}
 }
 ```
