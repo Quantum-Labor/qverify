@@ -77,7 +77,9 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "N", "B", "UP", "SIM", "RUF"]
-ignore = []
+# RUF001/002/003 flag mathematical Unicode (∧ ∨ ¬ ⊤) as ambiguous; we use
+# these symbols intentionally as logic notation throughout the codebase.
+ignore = ["RUF001", "RUF002", "RUF003"]
 
 [tool.ruff.format]
 quote-style = "double"
