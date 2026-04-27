@@ -1,0 +1,12 @@
+QVerify
+Copyright 2026 Serghei Brinza
+
+This product includes software developed by third parties under
+their respective open-source licenses. See pyproject.toml for the
+full list of dependencies.
+
+Built with Gemma. Gemma is provided by Google LLC under and subject
+to the Gemma Terms of Use (https://ai.google.dev/gemma/terms).
+
+Uses IBM Quantum services. IBM Quantum is a trademark of
+International Business Machines Corporation.
