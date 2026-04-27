@@ -4,18 +4,12 @@ from __future__ import annotations
 
 import math
 from collections import Counter
-from typing import Any
-
-import numpy as np
-import pennylane as qml
 
 from qverify.translator.cnf import CNF
 from qverify.utils.logging import get_logger
 from qverify.verifier.backends import Backend, PennyLaneBackend
 from qverify.verifier.classical_check import satisfies
-from qverify.verifier.diffusion import build_diffusion
 from qverify.verifier.encoding import AtomEncoder, VerifierError
-from qverify.verifier.oracle import build_sat_oracle, required_ancillas
 from qverify.verifier.types import CounterModel, VerificationResult
 
 MAX_VARIABLES: int = 16
@@ -45,12 +39,11 @@ def run_grover(
     n_solutions_estimate: int = 1,
     backend: Backend | None = None,
 ) -> VerificationResult:
-    """Execute Grover's search on the given CNF.
+    """Execute Grover's search on the given CNF via the supplied backend.
 
     Picks the most-frequent measurement bitstring and verifies classically
     that it satisfies the CNF; only then sets ``contradiction_found=True``.
-    If the top measurement does NOT satisfy, falls back to UNSAT (within
-    shot-noise limits).
+    If no measured bitstring satisfies, falls back to UNSAT.
     """
     if backend is None:
         backend = PennyLaneBackend()
@@ -61,9 +54,8 @@ def run_grover(
 
     if n_qubits > MAX_VARIABLES:
         raise VerifierError(
-            f"CNF has {n_qubits} variables; the Phase 3 verifier accepts at "
-            f"most {MAX_VARIABLES} (state-vector simulation cost is exponential). "
-            "Reduce the variable count or wait for a hardware backend."
+            f"CNF has {n_qubits} variables; the verifier accepts at most "
+            f"{MAX_VARIABLES} (state-vector simulation cost is exponential)."
         )
 
     # Empty CNF is trivially satisfied by the empty assignment.
@@ -80,46 +72,17 @@ def run_grover(
         )
 
     encoded = encoder.encode_clauses()
-    n_anc = required_ancillas(n_clauses)
-    total_wires = n_qubits + n_anc
     n_iter = optimal_iterations(n_qubits, n_solutions_estimate)
 
-    oracle = build_sat_oracle(encoded, n_qubits)
-    diffusion = build_diffusion(n_qubits)
+    counts, metadata = backend.execute_grover(encoded, n_qubits, n_iter, shots=shots, seed=seed)
 
-    device = backend.device(total_wires, shots=shots, seed=seed)
-
-    @qml.set_shots(shots=shots)
-    @qml.qnode(device)
-    def circuit() -> Any:
-        for w in range(n_qubits):
-            qml.Hadamard(wires=w)
-        for _ in range(n_iter):
-            oracle()
-            diffusion()
-        return qml.sample(wires=list(range(n_qubits)))
-
-    samples = np.asarray(circuit())
-    if samples.ndim == 1:
-        samples = samples.reshape(-1, 1)
-
-    counts: Counter[str] = Counter()
-    for row in samples:
-        bitstring = "".join(str(int(b)) for b in row)
-        counts[bitstring] += 1
-
-    top = counts.most_common(TOP_MEASUREMENTS_KEEP)
+    counter: Counter[str] = Counter(counts)
+    top = counter.most_common(TOP_MEASUREMENTS_KEEP)
     top_measurements: tuple[tuple[str, int], ...] = tuple((bs, c) for bs, c in top)
 
     contradiction_found = False
     counter_model: CounterModel | None = None
-
-    # Classical post-check: scan measured bitstrings in descending count order
-    # and return the first satisfier. When M is close to N/2 the amplitudes
-    # remain near-uniform, so the most-frequent bitstring is essentially
-    # random — but a satisfying outcome will still appear high in the count
-    # ranking, so a short scan is enough.
-    for bits, _count in counts.most_common():
+    for bits, _count in counter.most_common():
         candidate = encoder.bitstring_to_assignment(bits)
         if satisfies(cnf, candidate):
             contradiction_found = True
@@ -137,13 +100,16 @@ def run_grover(
                 top[0][0],
             )
 
+    backend_name_value = metadata.get("backend_name") or backend.name
+    backend_name = backend_name_value if isinstance(backend_name_value, str) else backend.name
+
     return VerificationResult(
         contradiction_found=contradiction_found,
         counter_model=counter_model,
         n_variables=n_qubits,
         n_clauses=n_clauses,
         n_grover_iterations=n_iter,
-        backend_name=backend.name,
+        backend_name=backend_name,
         shots=shots,
         top_measurements=top_measurements,
     )
