@@ -3,13 +3,16 @@
 from __future__ import annotations
 
 from collections import Counter
-from typing import Any, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
 import numpy as np
 import pennylane as qml
 
 from qverify.verifier.diffusion import build_diffusion
 from qverify.verifier.oracle import build_sat_oracle, required_ancillas
+
+if TYPE_CHECKING:
+    from qverify.utils.ibm_client import IBMRuntimeClient
 
 
 @runtime_checkable
@@ -86,3 +89,86 @@ class PennyLaneBackend:
 
         metadata: dict[str, object] = {"backend_name": self.name}
         return dict(counter), metadata
+
+
+class IBMQuantumBackend:
+    """IBM Quantum hardware backend (Heron r2 by default).
+
+    Construction is cheap and never touches the network. The
+    :class:`~qverify.utils.ibm_client.IBMRuntimeClient` is built lazily on
+    the first call to :meth:`execute_grover` from
+    :data:`~qverify.utils.config.Settings.ibm_quantum_token` and
+    :data:`~qverify.utils.config.Settings.ibm_quantum_instance` if no
+    explicit ``client`` was supplied.
+    """
+
+    def __init__(
+        self,
+        backend_name: str | None = None,
+        *,
+        client: IBMRuntimeClient | None = None,
+        optimization_level: int = 3,
+        min_qubits: int = 5,
+    ) -> None:
+        self._explicit_backend_name: str | None = backend_name
+        self._client: IBMRuntimeClient | None = client
+        self._optimization_level: int = optimization_level
+        self._min_qubits: int = min_qubits
+        self._resolved_backend_name: str = ""
+
+    @property
+    def name(self) -> str:
+        """Resolved backend name (e.g. ``ibm_kingston``); empty until first run."""
+        if self._resolved_backend_name:
+            return self._resolved_backend_name
+        if self._explicit_backend_name:
+            return self._explicit_backend_name
+        return ""
+
+    def _ensure_client(self) -> IBMRuntimeClient:
+        if self._client is not None:
+            return self._client
+        from qverify.utils.config import load_settings
+        from qverify.utils.ibm_client import IBMRuntimeClient
+
+        settings = load_settings()
+        token = settings.require("ibm_quantum_token")
+        instance = settings.require("ibm_quantum_instance")
+        self._client = IBMRuntimeClient(token=token, instance=instance)
+        return self._client
+
+    def execute_grover(
+        self,
+        encoded_clauses: tuple[tuple[tuple[int, bool], ...], ...],
+        n_qubits: int,
+        n_iterations: int,
+        *,
+        shots: int,
+        seed: int,
+    ) -> tuple[dict[str, int], dict[str, object]]:
+        del seed  # IBM hardware is intrinsically non-deterministic.
+        from qverify.verifier.grover_circuit import build_grover_qiskit_circuit
+
+        circuit = build_grover_qiskit_circuit(encoded_clauses, n_qubits, n_iterations)
+
+        client = self._ensure_client()
+
+        backend_name = self._explicit_backend_name
+        if backend_name is None:
+            backend_name = client.least_busy_heron(min_qubits=self._min_qubits)
+
+        result = client.run(
+            circuit,
+            backend_name=backend_name,
+            shots=shots,
+            optimization_level=self._optimization_level,
+        )
+
+        self._resolved_backend_name = result.backend_name
+
+        metadata: dict[str, object] = {
+            "backend_name": result.backend_name,
+            "job_id": result.job_id,
+        }
+        metadata.update(result.raw_metadata)
+        return result.counts, metadata
