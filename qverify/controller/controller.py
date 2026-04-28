@@ -9,6 +9,7 @@ from typing import Protocol
 from qverify.controller.correction import format_counter_model_prompt
 from qverify.controller.llm import LLMBackend, StubGemmaBackend
 from qverify.controller.types import (
+    ControllerError,
     ControllerEvent,
     ControllerResult,
     FinalAnswer,
@@ -21,7 +22,7 @@ from qverify.controller.types import (
     StreamChunk,
 )
 from qverify.translator import CNF, Clause
-from qverify.translator.translator import Translator
+from qverify.translator.translator import TranslationError, Translator
 from qverify.translator.types import TranslationResult
 from qverify.utils.logging import get_logger
 from qverify.verifier import verify as default_verify
@@ -101,6 +102,11 @@ class Controller:
         self._max_retries_per_step: int = max_retries_per_step
         self._premise_translation_cache: dict[str, TranslationResult] = {}
         self._total_groundings: int = 0
+        # Pre-pass state — populated by reason() at the start of each run,
+        # cleared between runs. Empty defaults so _build_consistency_cnf
+        # works unchanged when verify_fn bypasses the pre-pass.
+        self._initial_universe: Universe = Universe(constants=())
+        self._initial_premise_cnf: CNF = CNF(clauses=())
 
     def reason(
         self,
@@ -112,9 +118,19 @@ class Controller:
     ) -> ControllerResult:
         emit_event = emit if emit is not None else _noop_emit
         start_wall = time.monotonic()
-        # Reset per-run grounding counter so repeated reason() calls on the
-        # same Controller instance don't leak counts between runs.
+        # Reset per-run state so repeated reason() calls on the same
+        # Controller instance don't leak universe / counter values between
+        # runs.
         self._total_groundings = 0
+        self._initial_universe = Universe(constants=())
+        self._initial_premise_cnf = CNF(clauses=())
+
+        # Pre-pass — read the whole problem statement once to seed the
+        # universe of discourse. Skipped when ``verify_fn`` is set: that
+        # path bypasses the translator entirely (test mode), so there's
+        # nothing for the pre-pass to do.
+        if self._verify_fn is None:
+            self._run_problem_pre_pass(problem)
 
         messages: list[dict[str, str]] = [{"role": "user", "content": problem}]
 
@@ -188,7 +204,33 @@ class Controller:
             total_verifications=total_verifications,
             total_contradictions_found=total_contradictions_found,
             total_groundings=self._total_groundings,
+            initial_universe_size=len(self._initial_universe.constants),
             wall_clock_seconds=time.monotonic() - start_wall,
+        )
+
+    # ----- pre-pass --------------------------------------------------------
+
+    def _run_problem_pre_pass(self, problem: str) -> None:
+        """Translate the problem statement once to seed the initial universe.
+
+        The translator may emit an empty CNF if the problem text contains
+        no logical content the LLM could extract — that's fine; the
+        per-step translations will still populate the universe. A hard
+        translator failure (retry budget exhausted) raises
+        :class:`ControllerError` so the run aborts cleanly with a
+        readable message rather than crashing later inside grounding.
+        """
+        translator = self._translator if self._translator is not None else _default_translator()
+        try:
+            initial_result = translator.translate(problem)
+        except TranslationError as exc:
+            raise ControllerError(f"failed to parse problem statement into CNF: {exc}") from exc
+        self._initial_universe = initial_result.universe
+        self._initial_premise_cnf = initial_result.cnf
+        _log.info(
+            "problem pre-pass extracted %d entities, %d clauses",
+            len(self._initial_universe.constants),
+            len(self._initial_premise_cnf.clauses),
         )
 
     # ----- internal step machinery -----------------------------------------
@@ -328,17 +370,18 @@ class Controller:
                 self._premise_translation_cache[premise] = cached
             all_results.append(cached)
 
-        # Merge universes — union of constants across all translation
-        # results, deduplicated and sorted (Universe's validator does both).
-        merged_constants: set[str] = set()
+        # Merge universes — start with the pre-pass universe extracted
+        # from the problem statement, then union in the per-premise +
+        # negated-step constants.
+        merged_constants: set[str] = set(self._initial_universe.constants)
         for r in all_results:
             merged_constants.update(r.universe.constants)
         merged_universe = Universe(constants=tuple(merged_constants))
 
-        # Combine CNFs — concatenate clauses from every result. Empty CNFs
-        # contribute nothing, which is the documented "translator declined
-        # to extract logical content" path.
-        all_clauses: list[Clause] = []
+        # Combine CNFs — start with the problem-statement CNF (always in
+        # scope), then concatenate the per-premise + negated-step
+        # clauses. Empty CNFs contribute nothing.
+        all_clauses: list[Clause] = list(self._initial_premise_cnf.clauses)
         for r in all_results:
             all_clauses.extend(r.cnf.clauses)
         combined_cnf = CNF(clauses=tuple(all_clauses))

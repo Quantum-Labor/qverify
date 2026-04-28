@@ -10,6 +10,19 @@ from pydantic import BaseModel, Field
 from qverify.verifier.types import CounterModel
 
 
+class ControllerError(RuntimeError):
+    """Raised when the controller cannot start or finish a reasoning run.
+
+    Distinct from per-step verification failures (those are recorded on
+    :class:`ControllerResult.gave_up_steps`) — this exception is reserved
+    for hard failures that abort the whole run, currently:
+
+    - Translator failed to convert the problem statement into CNF during
+      the pre-pass (no entities extractable, parser exhausted retries).
+    - Other invariants the controller cannot recover from.
+    """
+
+
 @dataclass(frozen=True)
 class StreamChunk:
     """One chunk emitted by an :class:`LLMBackend` during streaming."""
@@ -120,6 +133,7 @@ class ControllerResult(BaseModel):
     total_verifications: int = 0
     total_contradictions_found: int = 0
     total_groundings: int = 0
+    initial_universe_size: int = 0
     wall_clock_seconds: float = 0.0
 
     model_config = {"frozen": True}

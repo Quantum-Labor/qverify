@@ -7,6 +7,7 @@ from qverify.controller.llm import (
     StubGemmaBackend,
 )
 from qverify.controller.types import (
+    ControllerError,
     ControllerEvent,
     ControllerResult,
     FinalAnswer,
@@ -21,6 +22,7 @@ from qverify.controller.types import (
 
 __all__ = [
     "Controller",
+    "ControllerError",
     "ControllerEvent",
     "ControllerResult",
     "FinalAnswer",

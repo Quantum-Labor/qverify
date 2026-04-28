@@ -52,7 +52,9 @@ The Phase 5 [`Controller`](../qverify/controller/controller.py) calls the transl
 3. Calls `ground_cnf(combined, merged_universe)` to instantiate every free variable.
 4. Hands the grounded propositional CNF to `verify(...)`.
 
-`ControllerResult.total_groundings` counts how many times step 3 fired during a `reason_with_verification` run — useful for benchmarks and the demo UI.
+The controller seeds the universe from a one-shot translation of the problem statement before entering the reasoning loop (the Phase 6.5 pre-pass); per-step entities are merged on top.
+
+`ControllerResult.total_groundings` counts how many times step 3 fired during a `reason_with_verification` run, and `ControllerResult.initial_universe_size` reports how many constants the pre-pass extracted — both useful for benchmarks and the demo UI.
 
 ## Limitations
 

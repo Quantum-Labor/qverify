@@ -622,6 +622,163 @@ def test_controller_total_groundings_zero_when_verify_fn_used() -> None:
     assert result.total_groundings == 0
 
 
+# ---------------------------------------------------------------------------
+# Problem-statement pre-pass (Phase 6.5)
+# ---------------------------------------------------------------------------
+
+
+def test_initial_universe_seeded_from_problem_statement() -> None:
+    """A stub translator that returns ``entities=['Alice', 'Bob']`` for the
+    problem string seeds the controller's initial universe with both."""
+    problem_text = "Alice and Bob are friends. Does Alice trust Bob?"
+    translator = _StubTranslator(
+        mapping={
+            problem_text: TranslationResult(
+                cnf=CNF(clauses=()),
+                universe=Universe(constants=("Alice", "Bob")),
+            )
+        }
+    )
+    llm = StubGemmaBackend(scripts=[_thinking_scene("trivial.", answer="ans")])
+
+    result = reason_with_verification(
+        problem=problem_text,
+        llm=llm,
+        translator=translator,
+        max_retries_per_step=0,
+    )
+    assert result.initial_universe_size == 2
+
+
+def test_first_step_can_use_universe_from_problem(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """When step 1 has only a free variable, the pre-pass universe seeded
+    from the problem statement makes grounding succeed without GroundingError."""
+    from qverify.controller import controller as controller_module
+
+    captured_universes: list[Universe] = []
+    original_ground = controller_module.ground_cnf
+
+    def spy_ground_cnf(cnf: CNF, universe: Universe) -> CNF:
+        captured_universes.append(universe)
+        return original_ground(cnf, universe)
+
+    monkeypatch.setattr(controller_module, "ground_cnf", spy_ground_cnf)
+
+    problem_text = "Premises: All cats have fur. Tom is a cat."
+    universal_cnf = CNF(
+        clauses=(
+            Clause(
+                literals=(
+                    Literal(predicate="Cat", args=("x",), negated=True),
+                    Literal(predicate="Fur", args=("x",)),
+                )
+            ),
+        )
+    )
+    translator = _StubTranslator(
+        mapping={
+            # Pre-pass: extract Tom from the problem.
+            problem_text: TranslationResult(
+                cnf=CNF(clauses=()),
+                universe=Universe(constants=("Tom",)),
+            ),
+            # Step 1 is the universal — has variable x but no entities.
+            "All cats have fur.": TranslationResult(
+                cnf=universal_cnf, universe=Universe(constants=())
+            ),
+            "It is not the case that All cats have fur.": TranslationResult(
+                cnf=universal_cnf, universe=Universe(constants=())
+            ),
+        }
+    )
+    llm = StubGemmaBackend(scripts=[_thinking_scene("All cats have fur.", answer="done")])
+
+    result = reason_with_verification(
+        problem=problem_text,
+        llm=llm,
+        translator=translator,
+        max_retries_per_step=0,
+    )
+
+    # Step 1's verification ran (no GroundingError raised) thanks to the
+    # pre-pass seeding {Tom}. The universe used for grounding contains
+    # Tom even though the step itself declared no entities.
+    assert result.initial_universe_size == 1
+    assert any("Tom" in u.constants for u in captured_universes), (
+        f"expected pre-pass Tom in some grounding universe; saw {captured_universes}"
+    )
+
+
+def test_initial_universe_merges_with_per_step_entities(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Pre-pass seeds {Alice}; step 1 adds {Bob}; merged universe is both."""
+    from qverify.controller import controller as controller_module
+
+    captured_universes: list[Universe] = []
+    original_ground = controller_module.ground_cnf
+
+    def spy_ground_cnf(cnf: CNF, universe: Universe) -> CNF:
+        captured_universes.append(universe)
+        return original_ground(cnf, universe)
+
+    monkeypatch.setattr(controller_module, "ground_cnf", spy_ground_cnf)
+
+    problem_text = "Alice is a person."
+    bob_clause_cnf = CNF(clauses=(Clause(literals=(Literal(predicate="Friend", args=("Bob",)),)),))
+    translator = _StubTranslator(
+        mapping={
+            problem_text: TranslationResult(
+                cnf=CNF(clauses=()),
+                universe=Universe(constants=("Alice",)),
+            ),
+            "Bob is a friend.": TranslationResult(
+                cnf=bob_clause_cnf, universe=Universe(constants=("Bob",))
+            ),
+            "It is not the case that Bob is a friend.": TranslationResult(
+                cnf=bob_clause_cnf, universe=Universe(constants=("Bob",))
+            ),
+        }
+    )
+    llm = StubGemmaBackend(scripts=[_thinking_scene("Bob is a friend.", answer="ok")])
+
+    reason_with_verification(
+        problem=problem_text,
+        llm=llm,
+        translator=translator,
+        max_retries_per_step=0,
+    )
+
+    # The merged universe at step 1's grounding must include both
+    # the pre-pass entity (Alice) and the step's entity (Bob).
+    assert captured_universes, "expected at least one ground_cnf call"
+    merged = captured_universes[0].constants
+    assert "Alice" in merged
+    assert "Bob" in merged
+
+
+def test_translator_failure_on_problem_raises_controller_error() -> None:
+    """If the pre-pass translator fails with TranslationError, the controller
+    surfaces a ControllerError with a clean message (no run kicked off)."""
+    from qverify.controller.types import ControllerError
+    from qverify.translator.translator import TranslationError
+
+    class _FailingTranslator:
+        def translate(self, statement: str) -> TranslationResult:
+            raise TranslationError("translator exhausted retries")
+
+    llm = StubGemmaBackend(scripts=[])
+    with pytest.raises(ControllerError, match="failed to parse problem"):
+        reason_with_verification(
+            problem="A problem the translator can't handle.",
+            llm=llm,
+            translator=_FailingTranslator(),
+            max_retries_per_step=0,
+        )
+
+
 def test_importing_qverify_controller_does_not_load_transformers() -> None:
     """Spawn a fresh interpreter to assert lazy-load — the parent's sys.modules
     can be polluted by prior tests, but a child process is clean."""

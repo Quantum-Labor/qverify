@@ -107,3 +107,10 @@ def test_pipeline_sanity_with_scripted_thinking(
     assert result.total_groundings >= 1, (
         "no groundings happened — controller's grounding integration is broken"
     )
+    # Phase 6.5: the pre-pass on the problem statement should have
+    # extracted at least one entity (Tom) from "Premises: ... Tom is a
+    # cat. Question: ...". Without this, step 1's free-variable
+    # universal couldn't be grounded.
+    assert result.initial_universe_size >= 1, (
+        "expected at least one entity (Tom) extracted from the problem"
+    )
