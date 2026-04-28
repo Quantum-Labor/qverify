@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from qverify.translator.cnf import CNF, Literal
+from qverify.verifier._vars import is_free_variable
 
 
 class VerifierError(RuntimeError):
@@ -13,11 +14,6 @@ def _canonical_atom_name(lit: Literal) -> str:
     if not lit.args:
         return lit.predicate
     return f"{lit.predicate}({','.join(lit.args)})"
-
-
-def _is_free_variable(arg: str) -> bool:
-    """Spec heuristic: lowercase token shorter than 4 characters."""
-    return bool(arg) and arg[0].islower() and len(arg) < 4
 
 
 class AtomEncoder:
@@ -86,11 +82,10 @@ class AtomEncoder:
         for clause in cnf.clauses:
             for lit in clause.literals:
                 for arg in lit.args:
-                    if _is_free_variable(arg):
+                    if is_free_variable(arg):
                         raise VerifierError(
                             f"argument {arg!r} in literal {lit} looks like a free "
-                            f"first-order variable (lowercase, length < 4). The Phase 3 "
-                            f"verifier accepts ground atoms only — substitute concrete "
-                            f"constants (e.g. 'penguin', 'tweety') before calling verify(). "
-                            f"Phase 4 will add grounding."
+                            f"first-order variable (lowercase, length < 4). The verifier "
+                            f"accepts ground atoms only — call "
+                            f"qverify.verifier.grounding.ground_cnf(cnf, universe) first."
                         )
