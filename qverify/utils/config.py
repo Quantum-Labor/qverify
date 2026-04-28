@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     wandb_project: str | None = None
     wandb_entity: str | None = None
 
+    # Controller / reasoner defaults — overridable via env or .env
+    gemma_model_id: str = "google/gemma-4-E4B-it"
+    gemma_max_new_tokens: int = 4096
+    controller_max_retries_per_step: int = 3
+
     def require(self, field_name: str) -> str:
         """Return the value of `field_name` or raise if missing."""
         value = getattr(self, field_name, None)

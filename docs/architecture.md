@@ -6,27 +6,31 @@ QVerify intercepts each step of a thinking-mode LLM's chain of thought, translat
 
 ```mermaid
 flowchart TD
-    A[User Question] --> B[Reasoner LLM<br/>Gemma 4 E4B / 26B MoE]
-    B --> C[Step Interceptor]
-    C --> D[Translator LLM<br/>Gemma 4 E2B]
+    A[User Question] --> CTRL[Controller<br/>reason_with_verification]
+    CTRL --> B[Reasoner LLM<br/>Gemma 4 E4B / 26B MoE]
+    B -- streamed thinking chunks --> C[Step Interceptor<br/>paragraph buffer]
+    C -- premise list + ¬step --> D[Translator LLM<br/>Gemma 4 E2B]
     D --> E[CNF Formula]
     E --> F[Grover Verifier<br/>PennyLane simulator OR IBM Heron r2]
     F --> G{Contradiction<br/>found?}
-    G -- Yes --> H[Feedback to Reasoner]
-    H --> C
-    G -- No --> I{More steps?}
+    G -- Yes --> H[Counter-model<br/>correction prompt]
+    H --> B
+    G -- No --> COMMIT[Commit step to premises]
+    COMMIT --> I{More steps?}
     I -- Yes --> B
     I -- No --> J[Final Verified Answer]
 ```
 
 ## Components
 
-<!-- Filled in Phase 2-5 as each module is implemented. -->
+- **Controller** (`qverify.controller`) — top-level orchestrator. Streams the reasoner LLM in thinking mode, splits the chain-of-thought into discrete steps on paragraph boundaries, drives the verify-and-rewrite loop, and emits real-time events for UI consumption.
+- **Translator** (`qverify.translator`) — small LLM (Gemma 4 E2B) wrapped by a defensive parser that converts each natural-language statement into a strict CNF formula and rejects malformed JSON output.
+- **Verifier** (`qverify.verifier`) — Grover's search over the assignment space of the CNF, with a classical post-check on the most-frequent measurement bitstrings. Pluggable backend Protocol with a PennyLane simulator (default for the inner loop) and an IBM Quantum hardware backend (Heron r2, opt-in).
 
 ## Quantum verification
 
-<!-- Filled in Phase 3 after the Grover oracle is built. -->
+See [`docs/grover-explained.md`](grover-explained.md) for the four ingredients (state preparation, oracle, diffusion, measurement), the iteration-count math, and a worked example on the penguin CNF.
 
 ## Hardware backends
 
-<!-- Filled in Phase 4 after IBM Quantum integration. -->
+See [`docs/quantum-hardware-notes.md`](quantum-hardware-notes.md) for IBM Quantum account setup, `.env` layout, the smoke-test command, and the table of verified hardware runs.
