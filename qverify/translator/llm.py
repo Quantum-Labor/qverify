@@ -92,9 +92,10 @@ class Gemma4StructuredBackend:
 
 
 # Backward-compatibility alias — pre-Phase-6 callers and tests that import
-# ``GemmaE2BBackend`` continue to work unchanged. The name no longer
-# describes the implementation (it now uses outlines + schema constraint),
-# but it still describes the *role* — the E2B-sized translator.
+# ``GemmaE2BBackend`` continue to work unchanged. The name is now slightly
+# misleading: the default model is Gemma 4 E4B (see qverify.utils.models)
+# because E2B could not reliably encode universal quantification. Pass an
+# explicit ``model_id="google/gemma-4-E2B-it"`` to opt back into E2B.
 GemmaE2BBackend = Gemma4StructuredBackend
 
 
