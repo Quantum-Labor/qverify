@@ -54,3 +54,8 @@ def test_simple_sat_on_real_hardware(ibm_backend: IBMQuantumBackend) -> None:
     assert result.counter_model.assignment["Q"] is True
     print(f"\nIBM job ran on: {result.backend_name}")
     print(f"Top measurements: {result.top_measurements[:5]}")
+    print(f"IBM job_id: {result.metadata['job_id']}")
+    assert result.metadata["job_id"], "job_id missing from metadata"
+    assert result.metadata["job_id"].startswith("c"), (
+        f"unexpected job_id format: {result.metadata['job_id']!r}"
+    )

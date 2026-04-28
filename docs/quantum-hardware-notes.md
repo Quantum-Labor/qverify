@@ -2,6 +2,12 @@
 
 The Phase 3 verifier ships with two interchangeable backends: a fast PennyLane simulator (the default, used for development and CI) and an IBM Quantum hardware backend that runs the same Grover circuit on a Heron r2 device (default `ibm_kingston`). The simulator stays the default everywhere — hardware is opt-in by passing `backend=IBMQuantumBackend()` to `verify()`.
 
+## Verified hardware runs
+
+| Date       | Backend   | Job ID         | Test                              |
+|------------|-----------|----------------|-----------------------------------|
+| 2026-04-28 | ibm_fez   | <FILL_LATER>   | test_simple_sat_on_real_hardware  |
+
 ## Free IBM Quantum account
 
 1. Sign up at [quantum.cloud.ibm.com](https://quantum.cloud.ibm.com). Open Plan accounts are free and grant roughly 10 minutes of quantum time per month — plenty for hundreds of small Grover runs.

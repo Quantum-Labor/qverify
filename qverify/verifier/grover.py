@@ -112,4 +112,5 @@ def run_grover(
         backend_name=backend_name,
         shots=shots,
         top_measurements=top_measurements,
+        metadata=dict(metadata),
     )

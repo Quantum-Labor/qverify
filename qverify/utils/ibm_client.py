@@ -5,9 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+from qverify.utils.logging import get_logger
+
 if TYPE_CHECKING:
     from qiskit import QuantumCircuit
     from qiskit_ibm_runtime import QiskitRuntimeService
+
+_log = get_logger("qverify.utils.ibm_client")
 
 
 @dataclass(frozen=True)
@@ -101,6 +105,10 @@ class IBMRuntimeClient:
 
         sampler = SamplerV2(mode=backend)
         job = sampler.run([transpiled], shots=shots)
+        # Capture and log the job_id immediately so the user sees it even when
+        # the job sits in queue for a while.
+        job_id = str(job.job_id())
+        _log.info("IBM job submitted: %s on %s", job_id, backend_name)
         result = job.result()
         pub_result = result[0]
 
@@ -117,7 +125,7 @@ class IBMRuntimeClient:
             "transpiled_n_qubits": int(transpiled.num_qubits),
         }
         return IBMRunResult(
-            job_id=str(job.job_id()),
+            job_id=job_id,
             backend_name=backend_name,
             counts=counts,
             raw_metadata=raw_metadata,

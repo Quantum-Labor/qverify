@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 from pydantic import BaseModel, Field, model_validator
 
 
@@ -32,6 +34,13 @@ class VerificationResult(BaseModel):
     top_measurements: tuple[tuple[str, int], ...] = Field(
         default_factory=tuple,
         description="Top measurement bitstrings and their counts, descending. Truncated.",
+    )
+    metadata: dict[str, Any] = Field(
+        default_factory=dict,
+        description=(
+            "Backend-specific metadata (e.g. IBM Quantum job_id). Empty for "
+            "the simulator backend except for the backend_name echo."
+        ),
     )
 
     model_config = {"frozen": True}
