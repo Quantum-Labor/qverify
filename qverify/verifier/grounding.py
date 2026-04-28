@@ -1,53 +1,19 @@
-"""Universe and finite-domain grounding for first-order CNF formulas."""
+"""Finite-domain grounding for first-order CNF formulas."""
 
 from __future__ import annotations
 
 import itertools
 
-from pydantic import BaseModel, field_validator
-
 from qverify.translator.cnf import CNF, Clause, Literal
+from qverify.verifier._universe import Universe
 from qverify.verifier._vars import is_free_variable
 from qverify.verifier.encoding import VerifierError
+
+__all__ = ["GroundingError", "Universe", "ground_cnf"]
 
 
 class GroundingError(VerifierError):
     """Raised when grounding cannot be performed (e.g. empty universe)."""
-
-
-class Universe(BaseModel):
-    """Finite universe of discourse for grounding first-order CNF formulas.
-
-    Empty universes are permitted only for purely propositional formulas;
-    :func:`ground_cnf` raises :class:`GroundingError` when it encounters a
-    free variable with no constants to instantiate against.
-    """
-
-    constants: tuple[str, ...] = ()
-
-    model_config = {"frozen": True}
-
-    @field_validator("constants")
-    @classmethod
-    def _validate_constants(cls, v: tuple[str, ...]) -> tuple[str, ...]:
-        seen: set[str] = set()
-        for c in v:
-            if not isinstance(c, str):
-                raise ValueError(f"constant {c!r} is not a string")
-            if not c:
-                raise ValueError("constants must be non-empty strings")
-            if not c.replace("_", "").isalnum():
-                raise ValueError(f"constant {c!r} must be alphanumeric or underscore only")
-            if is_free_variable(c):
-                raise ValueError(
-                    f"constant {c!r} matches the free-variable pattern "
-                    f"(lowercase, length < 4); rename it (e.g. 'tom' -> 'Tom' "
-                    f"or 'tom_cat')"
-                )
-            if c in seen:
-                raise ValueError(f"duplicate constant {c!r}")
-            seen.add(c)
-        return tuple(sorted(v))
 
 
 def ground_cnf(cnf: CNF, universe: Universe) -> CNF:

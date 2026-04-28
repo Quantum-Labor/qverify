@@ -18,33 +18,44 @@ EXAMPLES: tuple[FewShotExample, ...] = (
     FewShotExample(
         statement="The penguin is a bird.",
         cnf_json=(
-            '{"clauses":[{"literals":[{"predicate":"Bird","args":["penguin"],"negated":false}]}]}'
+            '{"entities":["penguin"],'
+            '"clauses":[{"literals":['
+            '{"predicate":"Bird","args":["penguin"],"negated":false}]}]}'
         ),
-        explanation="Atomic ground proposition: single positive literal.",
+        explanation=(
+            "Atomic ground proposition: single positive literal; the constant "
+            "penguin is declared in entities."
+        ),
     ),
     FewShotExample(
         statement="Tweety cannot fly.",
         cnf_json=(
-            '{"clauses":[{"literals":[{"predicate":"Flies","args":["tweety"],"negated":true}]}]}'
+            '{"entities":["tweety"],'
+            '"clauses":[{"literals":['
+            '{"predicate":"Flies","args":["tweety"],"negated":true}]}]}'
         ),
         explanation="Atomic negation: single negated literal.",
     ),
     FewShotExample(
         statement="All birds can fly.",
         cnf_json=(
-            '{"clauses":[{"literals":['
+            '{"entities":[],'
+            '"clauses":[{"literals":['
             '{"predicate":"Bird","args":["x"],"negated":true},'
             '{"predicate":"Flies","args":["x"],"negated":false}]}]}'
         ),
         explanation=(
-            "Universal implication forall x. Bird(x) -> Flies(x); "
-            "rewritten as the contrapositive disjunction (~Bird(x) v Flies(x))."
+            "Universal implication forall x. Bird(x) -> Flies(x); rewritten "
+            "as the contrapositive disjunction (~Bird(x) v Flies(x)). The "
+            "variable x is free; no constants are declared because none "
+            "appear in the statement."
         ),
     ),
     FewShotExample(
         statement="Every mammal is warm-blooded.",
         cnf_json=(
-            '{"clauses":[{"literals":['
+            '{"entities":[],'
+            '"clauses":[{"literals":['
             '{"predicate":"Mammal","args":["x"],"negated":true},'
             '{"predicate":"WarmBlooded","args":["x"],"negated":false}]}]}'
         ),
@@ -54,22 +65,23 @@ EXAMPLES: tuple[FewShotExample, ...] = (
         ),
     ),
     FewShotExample(
-        statement="Some mammals lay eggs.",
+        statement="If it rains, the street is wet.",
         cnf_json=(
-            '{"clauses":['
-            '{"literals":[{"predicate":"Mammal","args":["sk1"],"negated":false}]},'
-            '{"literals":[{"predicate":"LaysEggs","args":["sk1"],"negated":false}]}'
-            "]}"
+            '{"entities":[],'
+            '"clauses":[{"literals":['
+            '{"predicate":"Rain","args":[],"negated":true},'
+            '{"predicate":"Wet","args":[],"negated":false}]}]}'
         ),
         explanation=(
-            "Existential exists x. Mammal(x) ^ LaysEggs(x) Skolemized to a "
-            "fresh constant sk1; the conjunction splits into two unit clauses."
+            "Pure propositional implication Rain -> Wet rewritten as "
+            "(~Rain v Wet). No predicate arguments; no entities."
         ),
     ),
     FewShotExample(
         statement="Felix is a cat and Felix is black.",
         cnf_json=(
-            '{"clauses":['
+            '{"entities":["felix"],'
+            '"clauses":['
             '{"literals":[{"predicate":"Cat","args":["felix"],"negated":false}]},'
             '{"literals":[{"predicate":"Black","args":["felix"],"negated":false}]}'
             "]}"
@@ -79,7 +91,8 @@ EXAMPLES: tuple[FewShotExample, ...] = (
     FewShotExample(
         statement="Tweety is a bird or Tweety is a bat.",
         cnf_json=(
-            '{"clauses":[{"literals":['
+            '{"entities":["tweety"],'
+            '"clauses":[{"literals":['
             '{"predicate":"Bird","args":["tweety"],"negated":false},'
             '{"predicate":"Bat","args":["tweety"],"negated":false}]}]}'
         ),
@@ -88,16 +101,22 @@ EXAMPLES: tuple[FewShotExample, ...] = (
     FewShotExample(
         statement="If Rex is a dog, then Rex is a mammal.",
         cnf_json=(
-            '{"clauses":[{"literals":['
-            '{"predicate":"Dog","args":["rex"],"negated":true},'
-            '{"predicate":"Mammal","args":["rex"],"negated":false}]}]}'
+            '{"entities":["Rex"],'
+            '"clauses":[{"literals":['
+            '{"predicate":"Dog","args":["Rex"],"negated":true},'
+            '{"predicate":"Mammal","args":["Rex"],"negated":false}]}]}'
         ),
-        explanation="Ground conditional P -> Q rewritten as (~P v Q).",
+        explanation=(
+            "Ground conditional P -> Q rewritten as (~P v Q). The constant "
+            "'Rex' is capitalized because lowercase 3-letter tokens match "
+            "the free-variable pattern; entities must be valid constants."
+        ),
     ),
     FewShotExample(
         statement="No fish can fly.",
         cnf_json=(
-            '{"clauses":[{"literals":['
+            '{"entities":[],'
+            '"clauses":[{"literals":['
             '{"predicate":"Fish","args":["x"],"negated":true},'
             '{"predicate":"Flies","args":["x"],"negated":true}]}]}'
         ),
@@ -109,7 +128,8 @@ EXAMPLES: tuple[FewShotExample, ...] = (
     FewShotExample(
         statement="If x is a bird and x is not a penguin, then x can fly.",
         cnf_json=(
-            '{"clauses":[{"literals":['
+            '{"entities":[],'
+            '"clauses":[{"literals":['
             '{"predicate":"Bird","args":["x"],"negated":true},'
             '{"predicate":"Penguin","args":["x"],"negated":false},'
             '{"predicate":"Flies","args":["x"],"negated":false}]}]}'
@@ -123,7 +143,8 @@ EXAMPLES: tuple[FewShotExample, ...] = (
     FewShotExample(
         statement="All birds have feathers and all birds lay eggs.",
         cnf_json=(
-            '{"clauses":['
+            '{"entities":[],'
+            '"clauses":['
             '{"literals":['
             '{"predicate":"Bird","args":["x"],"negated":true},'
             '{"predicate":"HasFeathers","args":["x"],"negated":false}]},'
@@ -139,7 +160,8 @@ EXAMPLES: tuple[FewShotExample, ...] = (
     FewShotExample(
         statement="x is a bachelor if and only if x is unmarried and x is a man.",
         cnf_json=(
-            '{"clauses":['
+            '{"entities":[],'
+            '"clauses":['
             '{"literals":['
             '{"predicate":"Bachelor","args":["x"],"negated":true},'
             '{"predicate":"Unmarried","args":["x"],"negated":false}]},'
@@ -172,26 +194,36 @@ Output format:
 - No markdown code fences. No prose before or after. No explanations.
 - The JSON must conform exactly to this schema:
   {
+    "entities": ["<constant1>", "<constant2>", ...],
     "clauses": [
       {"literals": [
         {"predicate": "<PascalCase string starting with an uppercase letter>",
-         "args": ["<lowercase term>", ...],
+         "args": ["<term>", ...],
          "negated": <true | false>}
       ]}
     ]
   }
 
 Translation conventions:
-- Predicate names are PascalCase, alphanumeric or underscore, first letter uppercase
-  (Bird, IsHappy, WarmBlooded, Has_Wings).
-- Constants are lowercase strings (penguin, tweety, rex, felix).
-- Free first-order variables are single lowercase letters (x, y, z).
-- Existentials are Skolemized to fresh lowercase constants sk1, sk2, ...
-- Universal quantifiers leave their variables free in the output.
+- Predicate names are PascalCase, alphanumeric or underscore, first letter
+  uppercase (Bird, IsHappy, WarmBlooded, Has_Wings).
+- Constants are lowercase >=4 chars (penguin, tweety, rex, felix), or
+  any token starting with an uppercase letter (Tom, Whiskers). Every
+  constant that appears as a literal argument MUST be declared in the
+  "entities" array.
+- Free first-order variables are single lowercase letters (x, y, z) or
+  short lowercase tokens of length < 4. Variables MUST NOT appear in
+  "entities".
+- Universal quantifiers leave their variables free in the output. The
+  controller will ground them against a finite universe before
+  verification.
 - Implications P -> Q are rewritten as the disjunction (~P v Q).
 - Biconditionals A <-> B are split into A -> B and B -> A.
+- Existentials (exists x ...) are NOT supported in this phase. Refuse
+  to translate them; produce an empty "clauses" array if asked.
 
-Any deviation from this schema will be rejected and you will be asked to retry.
+Any deviation from this schema will be rejected and you will be asked to
+retry.
 """
 
 

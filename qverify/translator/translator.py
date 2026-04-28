@@ -5,10 +5,10 @@ from __future__ import annotations
 import logging
 import re
 
-from qverify.translator.cnf import CNF
 from qverify.translator.few_shot import build_prompt
 from qverify.translator.llm import TranslationBackend
 from qverify.translator.parser import TranslationParseError, parse_llm_output
+from qverify.translator.types import TranslationResult
 from qverify.utils.logging import get_logger
 
 _SENTENCE_SPLIT = re.compile(r"[.!?]+")
@@ -41,14 +41,19 @@ class Translator:
         self._max_retries: int = max_retries
         self._log: logging.Logger = logger or get_logger("qverify.translator")
 
-    def translate(self, statement: str) -> CNF:
-        """Translate one natural-language statement into CNF.
+    def translate(self, statement: str) -> TranslationResult:
+        """Translate one natural-language statement into a TranslationResult.
 
         Retries up to ``max_retries`` on parse failure. The first re-attempt
         uses the same prompt; subsequent attempts append the previous bad
         output and the parse error to the prompt with an explicit instruction
         to emit JSON only. Raises :class:`TranslationError` with all attempted
         outputs attached if every retry fails.
+
+        The returned :class:`TranslationResult` exposes both the CNF and the
+        :class:`Universe` of declared constants — the controller merges
+        universes across translator calls and grounds the combined CNF
+        before handing it to the verifier.
         """
         self._validate_input(statement)
 
@@ -71,7 +76,7 @@ class Translator:
                 ) from exc
 
             try:
-                cnf = parse_llm_output(raw)
+                result = parse_llm_output(raw)
             except TranslationParseError as exc:
                 attempts.append((raw, str(exc)))
                 self._log.warning(
@@ -83,11 +88,12 @@ class Translator:
                 continue
 
             self._log.debug(
-                "translator attempt %d succeeded with %d clauses",
+                "translator attempt %d succeeded: %d clauses, %d entities",
                 attempt_idx + 1,
-                len(cnf.clauses),
+                len(result.cnf.clauses),
+                len(result.universe.constants),
             )
-            return cnf
+            return result
 
         raise TranslationError(
             f"translation failed after {self._max_retries} attempts",

@@ -22,6 +22,7 @@ from qverify.controller.types import (
 )
 from qverify.translator import CNF, Clause
 from qverify.translator.translator import Translator
+from qverify.translator.types import TranslationResult
 from qverify.utils.logging import get_logger
 from qverify.verifier import verify as default_verify
 from qverify.verifier.backends import Backend
@@ -29,9 +30,9 @@ from qverify.verifier.types import VerificationResult
 
 
 class _TranslatorLike(Protocol):
-    """Anything with a ``translate(statement) -> CNF`` method."""
+    """Anything with a ``translate(statement) -> TranslationResult`` method."""
 
-    def translate(self, statement: str) -> CNF: ...
+    def translate(self, statement: str) -> TranslationResult: ...
 
 
 VerifyFn = Callable[[str, list[str]], VerificationResult]
@@ -96,7 +97,7 @@ class Controller:
         self._verifier_backend: Backend | None = verifier_backend
         self._verify_fn: VerifyFn | None = verify_fn
         self._max_retries_per_step: int = max_retries_per_step
-        self._premise_cnf_cache: dict[str, CNF] = {}
+        self._premise_translation_cache: dict[str, TranslationResult] = {}
 
     def reason(
         self,
@@ -301,19 +302,24 @@ class Controller:
         step: str,
         translator: _TranslatorLike,
     ) -> CNF:
+        # Phase 4.5: per-premise + negated-step translations are merged and
+        # then grounded against the union of all declared universes before
+        # being handed to the verifier. Commit 3 of Phase 4.5 wires the
+        # full grounding path; for now we just thread the new
+        # TranslationResult return type through and concatenate clauses.
         all_clauses: list[Clause] = []
         for premise in premises:
-            cached = self._premise_cnf_cache.get(premise)
+            cached = self._premise_translation_cache.get(premise)
             if cached is None:
                 cached = translator.translate(premise)
-                self._premise_cnf_cache[premise] = cached
-            all_clauses.extend(cached.clauses)
+                self._premise_translation_cache[premise] = cached
+            all_clauses.extend(cached.cnf.clauses)
 
         # Translate the negation of the candidate step. We rely on the
         # translator to handle the natural-language negation rather than
         # negating CNFs algebraically (which converts to DNF in general).
-        neg_cnf = translator.translate(f"It is not the case that {step}")
-        all_clauses.extend(neg_cnf.clauses)
+        neg_result = translator.translate(f"It is not the case that {step}")
+        all_clauses.extend(neg_result.cnf.clauses)
         return CNF(clauses=tuple(all_clauses))
 
     def _request_step_rewrite(

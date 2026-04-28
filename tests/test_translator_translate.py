@@ -31,14 +31,19 @@ class SequentialBackend:
         return self._responses.pop(0)
 
 
-ATOMIC_JSON = '{"clauses":[{"literals":[{"predicate":"Bird","args":["penguin"],"negated":false}]}]}'
+ATOMIC_JSON = (
+    '{"entities":["penguin"],'
+    '"clauses":[{"literals":[{"predicate":"Bird","args":["penguin"],"negated":false}]}]}'
+)
 UNIVERSAL_JSON = (
-    '{"clauses":[{"literals":['
+    '{"entities":[],'
+    '"clauses":[{"literals":['
     '{"predicate":"Bird","args":["x"],"negated":true},'
     '{"predicate":"Flies","args":["x"],"negated":false}]}]}'
 )
 NEGATION_JSON = (
-    '{"clauses":[{"literals":[{"predicate":"Flies","args":["tweety"],"negated":true}]}]}'
+    '{"entities":["tweety"],'
+    '"clauses":[{"literals":[{"predicate":"Flies","args":["tweety"],"negated":true}]}]}'
 )
 
 
@@ -50,18 +55,20 @@ NEGATION_JSON = (
 def test_atomic_statement_translates() -> None:
     statement = "The penguin is a bird."
     backend = StubBackend({build_prompt(statement): ATOMIC_JSON})
-    cnf = Translator(backend).translate(statement)
-    assert isinstance(cnf, CNF)
-    assert cnf.clauses[0].literals[0].predicate == "Bird"
-    assert cnf.clauses[0].literals[0].args == ("penguin",)
-    assert cnf.clauses[0].literals[0].negated is False
+    result = Translator(backend).translate(statement)
+    assert isinstance(result.cnf, CNF)
+    assert result.universe.constants == ("penguin",)
+    assert result.cnf.clauses[0].literals[0].predicate == "Bird"
+    assert result.cnf.clauses[0].literals[0].args == ("penguin",)
+    assert result.cnf.clauses[0].literals[0].negated is False
 
 
 def test_universal_implication_translates() -> None:
     statement = "All birds can fly."
     backend = StubBackend({build_prompt(statement): UNIVERSAL_JSON})
-    cnf = Translator(backend).translate(statement)
-    lits = cnf.clauses[0].literals
+    result = Translator(backend).translate(statement)
+    assert result.universe.constants == ()
+    lits = result.cnf.clauses[0].literals
     assert len(lits) == 2
     assert lits[0].predicate == "Bird" and lits[0].negated is True
     assert lits[1].predicate == "Flies" and lits[1].negated is False
@@ -70,8 +77,19 @@ def test_universal_implication_translates() -> None:
 def test_negation_translates() -> None:
     statement = "Tweety cannot fly."
     backend = StubBackend({build_prompt(statement): NEGATION_JSON})
-    cnf = Translator(backend).translate(statement)
-    assert cnf.clauses[0].literals[0].negated is True
+    result = Translator(backend).translate(statement)
+    assert result.universe.constants == ("tweety",)
+    assert result.cnf.clauses[0].literals[0].negated is True
+
+
+def test_translate_returns_translation_result() -> None:
+    """The new return type wraps both the CNF and the universe."""
+    from qverify.translator.types import TranslationResult
+
+    statement = "The penguin is a bird."
+    backend = StubBackend({build_prompt(statement): ATOMIC_JSON})
+    result = Translator(backend).translate(statement)
+    assert isinstance(result, TranslationResult)
 
 
 # ---------------------------------------------------------------------------
@@ -81,16 +99,16 @@ def test_negation_translates() -> None:
 
 def test_retry_succeeds_on_second_attempt() -> None:
     backend = SequentialBackend(["this is not JSON at all", ATOMIC_JSON])
-    cnf = Translator(backend, max_retries=3).translate("The penguin is a bird.")
-    assert cnf.clauses[0].literals[0].predicate == "Bird"
+    result = Translator(backend, max_retries=3).translate("The penguin is a bird.")
+    assert result.cnf.clauses[0].literals[0].predicate == "Bird"
     assert len(backend.calls) == 2
 
 
 def test_retry_succeeds_on_third_attempt_with_stricter_prompt() -> None:
     backend = SequentialBackend(["bad output 1", "still bad", ATOMIC_JSON])
     translator = Translator(backend, max_retries=3)
-    cnf = translator.translate("The penguin is a bird.")
-    assert cnf.clauses[0].literals[0].predicate == "Bird"
+    result = translator.translate("The penguin is a bird.")
+    assert result.cnf.clauses[0].literals[0].predicate == "Bird"
     assert len(backend.calls) == 3
     # The third prompt should differ from the first two (it appends feedback).
     assert backend.calls[0] == backend.calls[1]
