@@ -56,6 +56,6 @@ def test_simple_sat_on_real_hardware(ibm_backend: IBMQuantumBackend) -> None:
     print(f"Top measurements: {result.top_measurements[:5]}")
     print(f"IBM job_id: {result.metadata['job_id']}")
     assert result.metadata["job_id"], "job_id missing from metadata"
-    assert result.metadata["job_id"].startswith("c"), (
-        f"unexpected job_id format: {result.metadata['job_id']!r}"
-    )
+    job_id = result.metadata["job_id"]
+    assert len(job_id) >= 16, f"job_id too short: {job_id!r}"
+    assert job_id.isalnum(), f"job_id has unexpected chars: {job_id!r}"
