@@ -3,15 +3,13 @@
 from __future__ import annotations
 
 import logging
-import re
 
 from qverify.translator.few_shot import build_prompt
 from qverify.translator.llm import TranslationBackend
 from qverify.translator.parser import TranslationParseError, parse_llm_output
 from qverify.translator.types import TranslationResult
+from qverify.translator.utils import split_sentences
 from qverify.utils.logging import get_logger
-
-_SENTENCE_SPLIT = re.compile(r"[.!?]+")
 
 
 class TranslationError(RuntimeError):
@@ -104,8 +102,7 @@ class Translator:
     def _validate_input(statement: str) -> None:
         if not isinstance(statement, str) or not statement.strip():
             raise TranslationError("statement is empty")
-        sentences = [s for s in _SENTENCE_SPLIT.split(statement.strip()) if s.strip()]
-        if len(sentences) > 1:
+        if len(split_sentences(statement)) > 1:
             raise TranslationError("translate() accepts a single statement; got multiple sentences")
 
     @staticmethod

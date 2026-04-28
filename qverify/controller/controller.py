@@ -24,6 +24,7 @@ from qverify.controller.types import (
 from qverify.translator import CNF, Clause
 from qverify.translator.translator import TranslationError, Translator
 from qverify.translator.types import TranslationResult
+from qverify.translator.utils import split_sentences
 from qverify.utils.logging import get_logger
 from qverify.verifier import verify as default_verify
 from qverify.verifier._universe import Universe
@@ -211,24 +212,61 @@ class Controller:
     # ----- pre-pass --------------------------------------------------------
 
     def _run_problem_pre_pass(self, problem: str) -> None:
-        """Translate the problem statement once to seed the initial universe.
+        """Translate the problem statement sentence-by-sentence (best-effort).
 
-        The translator may emit an empty CNF if the problem text contains
-        no logical content the LLM could extract — that's fine; the
-        per-step translations will still populate the universe. A hard
-        translator failure (retry budget exhausted) raises
-        :class:`ControllerError` so the run aborts cleanly with a
-        readable message rather than crashing later inside grounding.
+        The translator only accepts single sentences — the whole problem
+        is split via :func:`qverify.translator.utils.split_sentences` and
+        each sentence is translated independently. Sentences that fail
+        translation (e.g. interrogatives the LLM can't render as CNF) are
+        logged at WARNING level and skipped; their universes don't
+        contribute. The pre-pass raises :class:`ControllerError` only
+        when *every* sentence fails — that's the unambiguous "the
+        translator is broken on this input" signal.
+
+        Successful per-sentence translations are also seeded into the
+        :attr:`_premise_translation_cache` so that any reasoning step
+        that re-states a problem-statement sentence verbatim hits the
+        cache instead of re-translating.
         """
         translator = self._translator if self._translator is not None else _default_translator()
-        try:
-            initial_result = translator.translate(problem)
-        except TranslationError as exc:
-            raise ControllerError(f"failed to parse problem statement into CNF: {exc}") from exc
-        self._initial_universe = initial_result.universe
-        self._initial_premise_cnf = initial_result.cnf
+        sentences = split_sentences(problem)
+        if not sentences:
+            _log.info("problem pre-pass: no sentences to translate")
+            return
+
+        merged_constants: set[str] = set()
+        all_clauses: list[Clause] = []
+        successes = 0
+        failures: list[tuple[str, str]] = []
+
+        for sentence in sentences:
+            try:
+                result = translator.translate(sentence)
+            except TranslationError as exc:
+                failures.append((sentence, str(exc)))
+                _log.warning(
+                    "problem pre-pass: skipping sentence %r — translator failed: %s",
+                    sentence,
+                    exc,
+                )
+                continue
+            successes += 1
+            self._premise_translation_cache[sentence] = result
+            merged_constants.update(result.universe.constants)
+            all_clauses.extend(result.cnf.clauses)
+
+        if successes == 0:
+            raise ControllerError(
+                f"failed to parse any of the {len(sentences)} problem sentences "
+                f"into CNF; first failure: {failures[0][1] if failures else 'unknown'}"
+            )
+
+        self._initial_universe = Universe(constants=tuple(merged_constants))
+        self._initial_premise_cnf = CNF(clauses=tuple(all_clauses))
         _log.info(
-            "problem pre-pass extracted %d entities, %d clauses",
+            "problem pre-pass: %d/%d sentences translated, %d entities, %d clauses",
+            successes,
+            len(sentences),
             len(self._initial_universe.constants),
             len(self._initial_premise_cnf.clauses),
         )

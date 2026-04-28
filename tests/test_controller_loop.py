@@ -628,15 +628,18 @@ def test_controller_total_groundings_zero_when_verify_fn_used() -> None:
 
 
 def test_initial_universe_seeded_from_problem_statement() -> None:
-    """A stub translator that returns ``entities=['Alice', 'Bob']`` for the
-    problem string seeds the controller's initial universe with both."""
+    """The pre-pass calls translate() per sentence; entities accumulate."""
     problem_text = "Alice and Bob are friends. Does Alice trust Bob?"
     translator = _StubTranslator(
         mapping={
-            problem_text: TranslationResult(
+            "Alice and Bob are friends": TranslationResult(
                 cnf=CNF(clauses=()),
                 universe=Universe(constants=("Alice", "Bob")),
-            )
+            ),
+            "Does Alice trust Bob": TranslationResult(
+                cnf=CNF(clauses=()),
+                universe=Universe(constants=()),
+            ),
         }
     )
     llm = StubGemmaBackend(scripts=[_thinking_scene("trivial.", answer="ans")])
@@ -679,8 +682,12 @@ def test_first_step_can_use_universe_from_problem(
     )
     translator = _StubTranslator(
         mapping={
-            # Pre-pass: extract Tom from the problem.
-            problem_text: TranslationResult(
+            # Pre-pass sentence 1 — universal, no entities.
+            "Premises: All cats have fur": TranslationResult(
+                cnf=universal_cnf, universe=Universe(constants=())
+            ),
+            # Pre-pass sentence 2 — extracts Tom.
+            "Tom is a cat": TranslationResult(
                 cnf=CNF(clauses=()),
                 universe=Universe(constants=("Tom",)),
             ),
@@ -730,7 +737,8 @@ def test_initial_universe_merges_with_per_step_entities(
     bob_clause_cnf = CNF(clauses=(Clause(literals=(Literal(predicate="Friend", args=("Bob",)),)),))
     translator = _StubTranslator(
         mapping={
-            problem_text: TranslationResult(
+            # Pre-pass sentence (period stripped by split_sentences).
+            "Alice is a person": TranslationResult(
                 cnf=CNF(clauses=()),
                 universe=Universe(constants=("Alice",)),
             ),
@@ -760,8 +768,8 @@ def test_initial_universe_merges_with_per_step_entities(
 
 
 def test_translator_failure_on_problem_raises_controller_error() -> None:
-    """If the pre-pass translator fails with TranslationError, the controller
-    surfaces a ControllerError with a clean message (no run kicked off)."""
+    """If every pre-pass sentence fails translation, the controller surfaces
+    a ControllerError naming the count of failed sentences."""
     from qverify.controller.types import ControllerError
     from qverify.translator.translator import TranslationError
 
@@ -770,13 +778,194 @@ def test_translator_failure_on_problem_raises_controller_error() -> None:
             raise TranslationError("translator exhausted retries")
 
     llm = StubGemmaBackend(scripts=[])
-    with pytest.raises(ControllerError, match="failed to parse problem"):
+    with pytest.raises(ControllerError, match=r"failed to parse any of the \d+"):
         reason_with_verification(
-            problem="A problem the translator can't handle.",
+            problem="One bad sentence. Another bad one. And a third.",
             llm=llm,
             translator=_FailingTranslator(),
             max_retries_per_step=0,
         )
+
+
+# ---------------------------------------------------------------------------
+# Sentence-by-sentence pre-pass (Phase 6.6)
+# ---------------------------------------------------------------------------
+
+
+class _RecordingTranslator:
+    """Translator that mirrors _StubTranslator but records every call.
+
+    Subset of _StubTranslator's API: it returns canned results from a
+    mapping (with ``default_result`` fallback) and exposes ``calls`` so
+    tests can assert on the exact sequence of translate() invocations.
+    """
+
+    def __init__(
+        self,
+        mapping: dict[str, TranslationResult] | None = None,
+        default_result: TranslationResult | None = None,
+        failures: set[str] | None = None,
+    ) -> None:
+        self._mapping = dict(mapping) if mapping else {}
+        self._default = (
+            default_result
+            if default_result is not None
+            else TranslationResult(cnf=CNF(clauses=()), universe=Universe(constants=()))
+        )
+        self._failures = set(failures) if failures else set()
+        self.calls: list[str] = []
+
+    def translate(self, statement: str) -> TranslationResult:
+        self.calls.append(statement)
+        if statement in self._failures:
+            from qverify.translator.translator import TranslationError
+
+            raise TranslationError(f"scripted failure for {statement!r}")
+        if statement in self._mapping:
+            return self._mapping[statement]
+        return self._default
+
+
+def test_pre_pass_splits_problem_into_sentences() -> None:
+    """The pre-pass calls translate() once per sentence — three calls for
+    a three-sentence canonical problem."""
+    problem = "Premises: All cats have fur. Tom is a cat. Does Tom have fur?"
+    translator = _RecordingTranslator()
+    llm = StubGemmaBackend(scripts=[_thinking_scene("done.", answer="ans")])
+
+    reason_with_verification(
+        problem=problem,
+        llm=llm,
+        translator=translator,
+        max_retries_per_step=0,
+    )
+
+    pre_pass_calls = [c for c in translator.calls if not c.startswith("It is not the case that")]
+    # The pre-pass calls one per sentence (3); the per-step verification
+    # also adds the committed step "done" to translator.calls. Filter to
+    # just the pre-pass texts.
+    pre_pass_only = [c for c in pre_pass_calls if c != "done."]
+    assert pre_pass_only == [
+        "Premises: All cats have fur",
+        "Tom is a cat",
+        "Does Tom have fur",
+    ]
+
+
+def test_pre_pass_merges_entities_across_sentences() -> None:
+    """Sentence 1 contributes Alice; sentence 2 contributes Bob;
+    initial universe is the union."""
+    problem = "Alice is a person. Bob is a person. Does Alice know Bob?"
+    translator = _RecordingTranslator(
+        mapping={
+            "Alice is a person": TranslationResult(
+                cnf=CNF(clauses=()), universe=Universe(constants=("Alice",))
+            ),
+            "Bob is a person": TranslationResult(
+                cnf=CNF(clauses=()), universe=Universe(constants=("Bob",))
+            ),
+            "Does Alice know Bob": TranslationResult(
+                cnf=CNF(clauses=()), universe=Universe(constants=())
+            ),
+        }
+    )
+    llm = StubGemmaBackend(scripts=[_thinking_scene("trivial.", answer="ans")])
+
+    result = reason_with_verification(
+        problem=problem,
+        llm=llm,
+        translator=translator,
+        max_retries_per_step=0,
+    )
+    assert result.initial_universe_size == 2
+
+
+def test_pre_pass_skips_sentences_that_fail_to_translate() -> None:
+    """A failing question sentence is logged + skipped; the remaining
+    sentences still seed the universe."""
+    problem = "Tom is a cat. All cats have fur. Does Tom have fur?"
+    translator = _RecordingTranslator(
+        mapping={
+            "Tom is a cat": TranslationResult(
+                cnf=CNF(clauses=()), universe=Universe(constants=("Tom",))
+            ),
+            "All cats have fur": TranslationResult(
+                cnf=CNF(clauses=()), universe=Universe(constants=())
+            ),
+        },
+        failures={"Does Tom have fur"},
+    )
+    llm = StubGemmaBackend(scripts=[_thinking_scene("trivial.", answer="ans")])
+
+    result = reason_with_verification(
+        problem=problem,
+        llm=llm,
+        translator=translator,
+        max_retries_per_step=0,
+    )
+    # Two of three sentences succeeded; Tom is in the initial universe.
+    assert result.initial_universe_size == 1
+
+
+def test_pre_pass_raises_when_all_sentences_fail() -> None:
+    """If the translator fails on every pre-pass sentence, the controller
+    surfaces ControllerError with a sentence count."""
+    from qverify.controller.types import ControllerError
+
+    problem = "First. Second. Third."
+    translator = _RecordingTranslator(
+        failures={"First", "Second", "Third"},
+    )
+    llm = StubGemmaBackend(scripts=[])
+
+    with pytest.raises(ControllerError, match=r"failed to parse any of the 3 problem sentences"):
+        reason_with_verification(
+            problem=problem,
+            llm=llm,
+            translator=translator,
+            max_retries_per_step=0,
+        )
+
+
+def test_pre_pass_caches_successful_translations_for_premise_reuse() -> None:
+    """A sentence that appears in both the problem and as a committed
+    step should hit the pre-pass cache on the per-step verification."""
+    problem = "Tom is a cat. Tom has fur."
+    tom_cat_result = TranslationResult(
+        cnf=CNF(clauses=(Clause(literals=(Literal(predicate="Cat", args=("Tom",)),)),)),
+        universe=Universe(constants=("Tom",)),
+    )
+    translator = _RecordingTranslator(
+        mapping={
+            "Tom is a cat": tom_cat_result,
+            "Tom has fur": TranslationResult(
+                cnf=CNF(clauses=(Clause(literals=(Literal(predicate="Fur", args=("Tom",)),)),)),
+                universe=Universe(constants=("Tom",)),
+            ),
+        }
+    )
+    # The thinking trace re-states "Tom is a cat" (the period stripped by
+    # split_sentences becomes the cache key) as a step.
+    llm = StubGemmaBackend(scripts=[_thinking_scene("Tom is a cat", "Tom is a cat", answer="ans")])
+
+    reason_with_verification(
+        problem=problem,
+        llm=llm,
+        translator=translator,
+        max_retries_per_step=0,
+    )
+
+    # Pre-pass calls: "Tom is a cat", "Tom has fur" — 2 calls.
+    # Per-step processing translates "It is not the case that <step>"
+    # (uncached) plus the premise itself ("Tom is a cat", which IS in
+    # the cache from the pre-pass — should not re-translate).
+    pre_pass_count = sum(1 for c in translator.calls if c == "Tom is a cat")
+    # Only the pre-pass call should appear; the per-step premise lookup
+    # hits the cache populated by the pre-pass.
+    assert pre_pass_count == 1, (
+        f"expected 'Tom is a cat' to be translated only once via the pre-pass cache; "
+        f"saw {pre_pass_count} calls in {translator.calls}"
+    )
 
 
 def test_importing_qverify_controller_does_not_load_transformers() -> None:
