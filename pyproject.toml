@@ -37,6 +37,7 @@ dependencies = [
     "torchvision>=0.20",
     "transformers>=4.50",
     "accelerate>=1.0",
+    "outlines>=1.2",
     "peft>=0.13",
     "bitsandbytes>=0.44",
     "qiskit>=2.0",

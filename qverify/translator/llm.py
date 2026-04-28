@@ -1,4 +1,4 @@
-"""LLM backend for translation."""
+"""LLM backend for translation — constrained-generation via outlines."""
 
 from __future__ import annotations
 
@@ -15,12 +15,26 @@ class TranslationBackend(Protocol):
     def generate(self, prompt: str, max_new_tokens: int = 512) -> str: ...
 
 
-class GemmaE2BBackend:
-    """Gemma 4 E2B via transformers — production backend.
+class Gemma4StructuredBackend:
+    """Gemma 4 E2B via transformers + outlines — schema-constrained backend.
 
-    Both the tokenizer and the model are loaded lazily on the first call to
-    :meth:`generate` so that importing this module (or the parent package)
-    does not pull torch into memory or hit HuggingFace.
+    The model is wrapped in an :mod:`outlines` ``Transformers`` adapter and a
+    :class:`outlines.Generator` is constructed once with
+    :class:`qverify.translator.schema.TranslationSchema` as the output type.
+    Outlines compiles the schema into a token-level finite state machine and
+    forces every emitted token to keep the running output schema-conformant.
+    Result: 2B-parameter models that previously fell into garbage on retry
+    (``\"3\\n\\u0060\\u0060\\u0060\\n\"``) now emit exactly one
+    schema-valid JSON document — every time, no retries needed for syntax.
+
+    The schema compilation happens once on the first :meth:`generate` call
+    and is cached on the instance; subsequent translations pay only the
+    normal generate-token cost.
+
+    Both the tokenizer/model and the outlines model are loaded lazily on the
+    first :meth:`generate` call so that importing this module (or the
+    parent package) does not pull torch, transformers, or outlines into
+    ``sys.modules``.
     """
 
     def __init__(
@@ -30,42 +44,58 @@ class GemmaE2BBackend:
     ) -> None:
         self._model_id: str = model_id
         self._device: str = device
-        self._model: Any = None
-        self._tokenizer: Any = None
-        self._log = get_logger("qverify.translator.gemma")
+        self._generator: Any = None
+        self._log = get_logger("qverify.translator.gemma4_structured")
 
     def _load(self) -> None:
-        if self._model is not None:
+        if self._generator is not None:
             return
 
+        # Heavy imports happen here, not at module level — preserves the
+        # lazy-load contract enforced by Phase 5/6 unit tests.
+        import outlines
         import torch
         from transformers import AutoModelForCausalLM, AutoTokenizer
 
+        from qverify.translator.schema import TranslationSchema
+
         self._log.info("loading translator model %s", self._model_id)
-        self._tokenizer = AutoTokenizer.from_pretrained(self._model_id)
-        self._model = AutoModelForCausalLM.from_pretrained(
+        tokenizer = AutoTokenizer.from_pretrained(self._model_id)
+        hf_model = AutoModelForCausalLM.from_pretrained(
             self._model_id,
             torch_dtype=torch.bfloat16,
             device_map=self._device,
         )
-        self._model.eval()
+        # outlines's stub has narrower tokenizer typing than the runtime
+        # accepts; transformers PreTrainedTokenizer instances work fine.
+        model = outlines.from_transformers(hf_model, tokenizer)  # type: ignore[arg-type]
+        self._generator = outlines.Generator(model, output_type=TranslationSchema)
+        self._log.info("compiled schema into outlines generator")
 
     def generate(self, prompt: str, max_new_tokens: int = 512) -> str:
-        """Greedily decode ``max_new_tokens`` from the prompt and strip the prompt prefix."""
-        self._load()
-        import torch
+        """Run constrained generation; return the JSON serialization.
 
-        inputs = self._tokenizer(prompt, return_tensors="pt").to(self._model.device)
-        with torch.no_grad():
-            outputs = self._model.generate(
-                **inputs,
-                max_new_tokens=max_new_tokens,
-                do_sample=False,
-            )
-        decoded: str = self._tokenizer.decode(outputs[0], skip_special_tokens=True)
-        if decoded.startswith(prompt):
-            return decoded[len(prompt) :]
-        return decoded
+        Outlines normally returns the parsed Pydantic instance directly when
+        a schema is supplied. We re-serialize via :meth:`model_dump_json`
+        so the public ``generate(prompt) -> str`` contract — which the
+        :func:`qverify.translator.parser.parse_llm_output` consumer depends
+        on — is preserved.
+        """
+        self._load()
+        result = self._generator(prompt, max_new_tokens=max_new_tokens)
+        # Outlines may return either the parsed Pydantic instance or its
+        # JSON-string form depending on the schema/transport combo. Handle
+        # both so subsequent transformer/outlines upgrades don't break us.
+        if hasattr(result, "model_dump_json"):
+            return str(result.model_dump_json())
+        return str(result)
+
+
+# Backward-compatibility alias — pre-Phase-6 callers and tests that import
+# ``GemmaE2BBackend`` continue to work unchanged. The name no longer
+# describes the implementation (it now uses outlines + schema constraint),
+# but it still describes the *role* — the E2B-sized translator.
+GemmaE2BBackend = Gemma4StructuredBackend
 
 
 class StubBackend:

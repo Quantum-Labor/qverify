@@ -186,44 +186,24 @@ EXAMPLES: tuple[FewShotExample, ...] = (
 
 
 SYSTEM_PROMPT: str = """\
-You are a logic translator. Convert each natural-language statement into a \
-Boolean formula in Conjunctive Normal Form (CNF) and emit it as JSON.
+Convert the input statement into a CNF representation.
 
-Output format:
-- Emit exactly one JSON object and nothing else.
-- No markdown code fences. No prose before or after. No explanations.
-- The JSON must conform exactly to this schema:
-  {
-    "entities": ["<constant1>", "<constant2>", ...],
-    "clauses": [
-      {"literals": [
-        {"predicate": "<PascalCase string starting with an uppercase letter>",
-         "args": ["<term>", ...],
-         "negated": <true | false>}
-      ]}
-    ]
-  }
+The output JSON shape is enforced by the decoder — focus on producing the
+right *content*. Conventions:
 
-Translation conventions:
-- Predicate names are PascalCase, alphanumeric or underscore, first letter
-  uppercase (Bird, IsHappy, WarmBlooded, Has_Wings).
-- Constants are lowercase >=4 chars (penguin, tweety, rex, felix), or
-  any token starting with an uppercase letter (Tom, Whiskers). Every
-  constant that appears as a literal argument MUST be declared in the
-  "entities" array.
-- Free first-order variables are single lowercase letters (x, y, z) or
-  short lowercase tokens of length < 4. Variables MUST NOT appear in
-  "entities".
-- Universal quantifiers leave their variables free in the output. The
-  controller will ground them against a finite universe before
-  verification.
-- Implications P -> Q are rewritten as the disjunction (~P v Q).
-- Biconditionals A <-> B are split into A -> B and B -> A.
-- Existentials (exists x ...) are NOT supported in this phase. Refuse
-  to translate them; produce an empty "clauses" array if asked.
-
-Any deviation from this schema will be rejected and you will be asked to
-retry.
+- "entities": list every proper-noun constant the statement mentions
+  (people, places, named objects). Constants are either uppercase-led
+  (Tom, Whiskers) or lowercase tokens of >= 4 characters (penguin,
+  tweety, felix). Leave the list empty for purely universal statements.
+- "clauses": each clause is a disjunction of literals. A literal has a
+  PascalCase "predicate", an "args" list, and a "negated" bool.
+- "args" elements are either declared entities (as ground constants) or
+  short lowercase variables (x, y, z) for universally quantified
+  statements. Variables do NOT appear in "entities".
+- Implications P -> Q become the clause (~P v Q). Biconditionals split
+  into both directions.
+- Existentials (exists x ...) are NOT supported; produce empty clauses
+  if asked.
 """
 
 
