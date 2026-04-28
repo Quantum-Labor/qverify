@@ -54,35 +54,22 @@ class IBMRuntimeClient:
     def least_busy_heron(self, min_qubits: int = 5) -> str:
         """Return the name of the least-busy operational Heron-class backend.
 
-        Filters ``service.backends(simulator=False, operational=True,
-        min_num_qubits=min_qubits)`` to those whose processor family contains
-        ``heron`` (case-insensitive) and whose name starts with ``ibm_``.
-        Raises :class:`RuntimeError` listing every rejection reason if none
-        qualify.
+        Delegates filtering to :meth:`QiskitRuntimeService.least_busy`, which
+        accepts the ``min_num_qubits`` / ``simulator`` / ``operational`` /
+        ``filters`` kwargs directly. The ``filters`` callable rejects every
+        backend whose processor family is not Heron, using
+        :func:`_extract_processor_family` to normalize the dict-shaped vs
+        string-shaped ``processor_type`` attribute that different
+        ``qiskit-ibm-runtime`` versions expose.
         """
         service = self.get_service()
-        candidates: list[Any] = []
-        rejected: list[tuple[str, str]] = []
-        for backend in service.backends(
-            simulator=False, operational=True, min_num_qubits=min_qubits
-        ):
-            name = str(backend.name)
-            if not name.startswith("ibm_"):
-                rejected.append((name, "name does not start with 'ibm_'"))
-                continue
-            family = _extract_processor_family(backend)
-            if "heron" not in family:
-                rejected.append((name, f"processor family={family!r} not heron"))
-                continue
-            candidates.append(backend)
-
-        if not candidates:
-            raise RuntimeError(
-                f"No operational Heron-class backends with >= {min_qubits} qubits. "
-                f"Rejected: {rejected}"
-            )
-
-        return str(service.least_busy(candidates).name)
+        backend = service.least_busy(
+            min_num_qubits=min_qubits,
+            simulator=False,
+            operational=True,
+            filters=lambda b: _extract_processor_family(b) == "heron",
+        )
+        return str(backend.name)
 
     def run(
         self,

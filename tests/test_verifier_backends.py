@@ -9,7 +9,7 @@ from qiskit import QuantumCircuit
 from qiskit_aer import AerSimulator
 
 from qverify.translator.cnf import CNF, Clause, Literal
-from qverify.utils.ibm_client import IBMRunResult
+from qverify.utils.ibm_client import IBMRunResult, IBMRuntimeClient
 from qverify.verifier.backends import (
     Backend,
     IBMQuantumBackend,
@@ -305,3 +305,81 @@ def test_ibm_backend_through_run_grover_unsat_when_no_measured_satisfier() -> No
     result = run_grover(cnf, shots=1000, seed=42, backend=backend)
     assert result.contradiction_found is False
     assert result.counter_model is None
+
+
+# ---------------------------------------------------------------------------
+# IBMRuntimeClient.least_busy_heron — regression for the kwargs-shape bug
+# ---------------------------------------------------------------------------
+
+
+class _FakeBackend:
+    """Stand-in for a Qiskit ``BackendV2`` with a ``processor_type`` attribute."""
+
+    def __init__(self, name: str, processor_type: Any) -> None:
+        self.name = name
+        self.processor_type = processor_type
+
+
+class _RecordingService:
+    """QiskitRuntimeService stub that records least_busy() calls verbatim."""
+
+    def __init__(self, return_backend: _FakeBackend) -> None:
+        self._return_backend = return_backend
+        self.least_busy_calls: list[dict[str, Any]] = []
+
+    def least_busy(self, **kwargs: Any) -> _FakeBackend:
+        self.least_busy_calls.append(kwargs)
+        return self._return_backend
+
+
+def test_least_busy_heron_uses_filters_kwarg() -> None:
+    """Regression: must call service.least_busy with kwargs, not a list of backends."""
+    fake_target = _FakeBackend("ibm_kingston", {"family": "Heron"})
+    fake_service = _RecordingService(fake_target)
+
+    client = IBMRuntimeClient(token="dummy", instance="dummy")
+    client._service = fake_service  # type: ignore[assignment]
+
+    name = client.least_busy_heron(min_qubits=5)
+
+    assert name == "ibm_kingston"
+    assert len(fake_service.least_busy_calls) == 1
+
+    call = fake_service.least_busy_calls[0]
+    assert call.get("min_num_qubits") == 5
+    assert call.get("simulator") is False
+    assert call.get("operational") is True
+    assert callable(call.get("filters"))
+
+
+def test_least_busy_heron_filter_accepts_heron_rejects_others() -> None:
+    """The captured `filters` callable must distinguish Heron from non-Heron."""
+    fake_target = _FakeBackend("ibm_kingston", {"family": "Heron"})
+    fake_service = _RecordingService(fake_target)
+
+    client = IBMRuntimeClient(token="dummy", instance="dummy")
+    client._service = fake_service  # type: ignore[assignment]
+    client.least_busy_heron(min_qubits=5)
+
+    filt = fake_service.least_busy_calls[0]["filters"]
+
+    heron_dict = _FakeBackend("ibm_a", {"family": "Heron"})
+    heron_string = _FakeBackend("ibm_b", "heron")
+    eagle_dict = _FakeBackend("ibm_c", {"family": "Eagle"})
+    falcon_string = _FakeBackend("ibm_d", "Falcon")
+
+    assert filt(heron_dict) is True
+    assert filt(heron_string) is True
+    assert filt(eagle_dict) is False
+    assert filt(falcon_string) is False
+
+
+def test_least_busy_heron_min_qubits_passed_through() -> None:
+    fake_target = _FakeBackend("ibm_kingston", {"family": "Heron"})
+    fake_service = _RecordingService(fake_target)
+
+    client = IBMRuntimeClient(token="dummy", instance="dummy")
+    client._service = fake_service  # type: ignore[assignment]
+    client.least_busy_heron(min_qubits=12)
+
+    assert fake_service.least_busy_calls[0]["min_num_qubits"] == 12
