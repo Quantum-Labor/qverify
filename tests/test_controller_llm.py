@@ -7,6 +7,7 @@ import sys
 import pytest
 
 from qverify.controller.llm import (
+    ANSWER_END_MARKER,
     THINKING_END_MARKER,
     THINKING_START_MARKER,
     Gemma4ThinkingBackend,
@@ -16,6 +17,19 @@ from qverify.controller.llm import (
     _stream_with_phase,
 )
 from qverify.controller.types import StreamChunk
+
+# Canonical real-marker sample, distilled from /tmp/gemma4_dump.txt of an
+# actual google/gemma-4-E4B-it run. The asymmetric brackets and the trailing
+# <turn|> token are the exact strings the tokenizer emits.
+REAL_RAW_SAMPLE = (
+    "<|channel>thought\n"
+    "1. Premise 1: All cats have fur.\n\n"
+    "2. Premise 2: Tom is a cat.\n\n"
+    "3. Therefore Tom has fur."
+    "<channel|>"
+    "**Answer:**\n\nYes"
+    "<turn|>"
+)
 
 # ---------------------------------------------------------------------------
 # StreamChunk validation
@@ -111,24 +125,19 @@ def test_stub_satisfies_llm_backend_protocol() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_split_thinking_answer_with_real_channel_markers() -> None:
-    raw = (
-        f"{THINKING_START_MARKER}"
-        "Step 1: Tom is a cat.\n\n"
-        "Step 2: All cats have fur.\n\n"
-        "Step 3: Therefore Tom has fur."
-        f"{THINKING_END_MARKER}"
-        "Yes, Tom has fur."
-    )
-    thinking, answer = _split_thinking_answer(raw)
-    assert "Step 1" in thinking
-    assert "Step 2" in thinking
-    assert "Step 3" in thinking
-    # The literal markers and the word "thought" must NOT leak into the
-    # extracted thinking text — they are channel framing, not content.
-    assert "<|channel|>" not in thinking
+def test_split_thinking_answer_real_markers() -> None:
+    """Canonical Gemma 4 E4B output (asymmetric brackets, trailing <turn|>)."""
+    thinking, answer = _split_thinking_answer(REAL_RAW_SAMPLE)
+    assert "Premise 1" in thinking
+    assert "Premise 2" in thinking
+    assert "Therefore" in thinking
+    # Channel markers and the channel-name "thought" must never leak into
+    # the thinking content.
+    assert "<|channel>" not in thinking
+    assert "<channel|>" not in thinking
     assert "thought" not in thinking
-    assert answer == "Yes, Tom has fur."
+    assert answer == "**Answer:**\n\nYes"
+    assert "<turn|>" not in answer
 
 
 def test_split_thinking_answer_no_start_marker_treats_as_answer_only() -> None:
@@ -175,60 +184,53 @@ def test_stream_with_phase_no_start_marker_emits_as_answer() -> None:
     assert all(c.phase == "answer" for c in chunks)
 
 
-def test_stream_with_phase_emits_thinking_then_answer_with_real_markers() -> None:
-    raw_chunks = [
-        THINKING_START_MARKER,
-        "thinking part ",
-        THINKING_END_MARKER,
-        " answer part",
-    ]
+def test_split_thinking_answer_split_across_chunks_real_markers() -> None:
+    """Feed REAL_RAW_SAMPLE one character at a time through ``_stream_with_phase``
+    and verify phase transitions land at the correct marker boundaries."""
+    raw_chunks = list(REAL_RAW_SAMPLE)  # one char per chunk
     chunks = list(_stream_with_phase(iter(raw_chunks)))
     text_by_phase = {"thinking": "", "answer": ""}
     for c in chunks:
         text_by_phase[c.phase] += c.text
-    assert "thinking part" in text_by_phase["thinking"]
-    assert "answer part" in text_by_phase["answer"]
-    # Markers themselves must not leak through.
-    for c in chunks:
-        assert "<|channel|>" not in c.text
 
-
-def test_stream_with_phase_chunk_split_anywhere_in_markers() -> None:
-    """Split the full Gemma 4 stream byte-by-byte at every offset and
-    verify the controller still recovers the same thinking and answer
-    content regardless of where the cut falls."""
-    raw = (
-        f"{THINKING_START_MARKER}"
-        "Step 1: Tom is a cat.\n\n"
-        "Step 2: All cats have fur."
-        f"{THINKING_END_MARKER}"
-        "Yes, Tom has fur."
+    expected_thinking = (
+        "1. Premise 1: All cats have fur.\n\n"
+        "2. Premise 2: Tom is a cat.\n\n"
+        "3. Therefore Tom has fur."
     )
-    expected_thinking = "Step 1: Tom is a cat.\n\nStep 2: All cats have fur."
-    expected_answer = "Yes, Tom has fur."
+    expected_answer = "**Answer:**\n\nYes"
 
-    for chunk_size in (1, 2, 3, 5, 7, 13, len(THINKING_START_MARKER)):
-        raw_chunks = [raw[i : i + chunk_size] for i in range(0, len(raw), chunk_size)]
-        chunks = list(_stream_with_phase(iter(raw_chunks)))
-        text_by_phase = {"thinking": "", "answer": ""}
-        for c in chunks:
-            text_by_phase[c.phase] += c.text
-        # Markers must never leak into either phase.
-        assert "<|channel|>" not in text_by_phase["thinking"], (
-            f"channel marker leaked into thinking at chunk_size={chunk_size}"
-        )
-        assert "<|channel|>" not in text_by_phase["answer"], (
-            f"channel marker leaked into answer at chunk_size={chunk_size}"
-        )
-        # Content is preserved (modulo the non-leading whitespace inside
-        # the start marker — the trailing newline of "<|channel|>thought\n"
-        # is consumed as part of the marker).
-        assert text_by_phase["thinking"] == expected_thinking, (
-            f"thinking mismatch at chunk_size={chunk_size}: {text_by_phase['thinking']!r}"
-        )
-        assert text_by_phase["answer"] == expected_answer, (
-            f"answer mismatch at chunk_size={chunk_size}: {text_by_phase['answer']!r}"
-        )
+    assert text_by_phase["thinking"] == expected_thinking
+    assert text_by_phase["answer"] == expected_answer
+    # No marker fragment leaks into either phase, regardless of where the
+    # one-character cuts fall inside the channel/turn tokens.
+    for marker in ("<|channel>", "<channel|>", "<turn|>", "thought"):
+        assert marker not in text_by_phase["thinking"], f"{marker!r} leaked into thinking"
+        assert marker not in text_by_phase["answer"], f"{marker!r} leaked into answer"
+
+
+def test_answer_end_marker_truncates_before_emit() -> None:
+    """`<turn|>` must terminate the answer phase and drop everything after it."""
+    raw = f"{THINKING_START_MARKER}ABC{THINKING_END_MARKER}HELLO{ANSWER_END_MARKER}WORLD"
+    chunks = list(_stream_with_phase(iter([raw])))
+    text_by_phase = {"thinking": "", "answer": ""}
+    for c in chunks:
+        text_by_phase[c.phase] += c.text
+    assert text_by_phase["thinking"] == "ABC"
+    assert text_by_phase["answer"] == "HELLO"
+    assert "WORLD" not in text_by_phase["answer"]
+    assert "<turn|>" not in text_by_phase["answer"]
+
+
+def test_answer_end_marker_truncates_when_split_byte_by_byte() -> None:
+    """Same truncation property must hold when chunks are 1 char wide."""
+    raw = f"{THINKING_START_MARKER}ABC{THINKING_END_MARKER}HELLO{ANSWER_END_MARKER}WORLD"
+    chunks = list(_stream_with_phase(iter(list(raw))))
+    text_by_phase = {"thinking": "", "answer": ""}
+    for c in chunks:
+        text_by_phase[c.phase] += c.text
+    assert text_by_phase["thinking"] == "ABC"
+    assert text_by_phase["answer"] == "HELLO"
 
 
 # ---------------------------------------------------------------------------

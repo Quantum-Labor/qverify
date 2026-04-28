@@ -10,13 +10,18 @@ from qverify.controller.types import StreamChunk
 from qverify.utils.logging import get_logger
 from qverify.utils.models import REASONER_E4B_MODEL_ID
 
-# Gemma 4 thinking-mode channel markers. Per the official model cards
-# (google/gemma-4-{E2B,E4B,31B}-it), thinking-mode output is structured as:
-#     <|channel|>thought\n[Internal reasoning]<|channel|>[Final answer]
-# The END marker is a substring of the START marker, so the phase parser
-# must consume the start before it begins scanning for the end.
-THINKING_START_MARKER = "<|channel|>thought\n"
-THINKING_END_MARKER = "<|channel|>"
+# Gemma 4 thinking-mode channel markers, derived from the actual emitted
+# special tokens (see scripts/dump_gemma4_thinking.py). The model uses
+# *asymmetric* brackets — opening tags are <|...> and closing tags are
+# <...|> — and the thinking and answer phases are wrapped like this:
+#     <|channel>thought\n[Internal reasoning]<channel|>[Final answer]<turn|>
+# Token IDs in google/gemma-4-E4B-it's tokenizer:
+#   100  '<|channel>'   - thinking channel start
+#   101  '<channel|>'   - thinking channel end / answer start
+#   106  '<turn|>'      - end-of-turn marker (must be stripped from answer)
+THINKING_START_MARKER = "<|channel>thought\n"
+THINKING_END_MARKER = "<channel|>"
+ANSWER_END_MARKER = "<turn|>"
 
 
 @runtime_checkable
@@ -41,23 +46,31 @@ def _split_thinking_answer(
     *,
     start_marker: str = THINKING_START_MARKER,
     end_marker: str = THINKING_END_MARKER,
+    answer_end_marker: str = ANSWER_END_MARKER,
 ) -> tuple[str, str]:
     """Split a complete Gemma 4 thinking-mode response into (thinking, answer).
 
     Recognizes the channel-token structure
-    ``<|channel|>thought\\n...<|channel|>...``. When ``start_marker`` is
+    ``<|channel>thought\\n...<channel|>...<turn|>``. When ``start_marker`` is
     absent the entire string is treated as the answer; when ``start_marker``
     is present but ``end_marker`` never appears after it, every byte after
     the start marker is treated as thinking and the answer comes back empty.
-    Both halves are stripped of surrounding whitespace.
+    The trailing ``answer_end_marker`` (and everything after it) is stripped
+    from the answer half. Both halves are stripped of surrounding whitespace.
     """
+
+    def _trim_answer(text: str) -> str:
+        if answer_end_marker and answer_end_marker in text:
+            text = text.split(answer_end_marker, 1)[0]
+        return text.strip()
+
     if start_marker not in raw:
-        return "", raw.strip()
+        return "", _trim_answer(raw)
     after_start = raw.split(start_marker, 1)[1]
     if end_marker not in after_start:
         return after_start.strip(), ""
     thinking, answer = after_start.split(end_marker, 1)
-    return thinking.strip(), answer.strip()
+    return thinking.strip(), _trim_answer(answer)
 
 
 def _stream_with_phase(
@@ -65,6 +78,7 @@ def _stream_with_phase(
     *,
     start_marker: str = THINKING_START_MARKER,
     end_marker: str = THINKING_END_MARKER,
+    answer_end_marker: str = ANSWER_END_MARKER,
 ) -> Iterator[StreamChunk]:
     """Wrap a raw text-chunk stream into phase-tagged :class:`StreamChunk` events.
 
@@ -77,7 +91,9 @@ def _stream_with_phase(
        answer at end-of-stream).
     2. ``thinking`` — searching for ``end_marker`` and emitting buffered
        text as ``thinking`` phase.
-    3. ``answer`` — every subsequent chunk is emitted as ``answer`` phase.
+    3. ``answer`` — emitting buffered text as ``answer`` phase, with the same
+       lookback-buffering pattern so we can detect ``answer_end_marker`` and
+       stop streaming as soon as it appears.
 
     The lookback window per state ensures the markers are detected even when
     a chunk boundary falls inside one.
@@ -86,12 +102,12 @@ def _stream_with_phase(
     pending = ""
     start_lookback = max(0, len(start_marker) - 1)
     end_lookback = max(0, len(end_marker) - 1)
+    answer_end_lookback = max(0, len(answer_end_marker) - 1) if answer_end_marker else 0
+    answer_terminated = False
 
     for chunk in text_stream:
-        if state == "answer":
-            if chunk:
-                yield StreamChunk(text=chunk, phase="answer")
-            continue
+        if answer_terminated:
+            break
 
         pending += chunk
 
@@ -112,22 +128,41 @@ def _stream_with_phase(
                 if before:
                     yield StreamChunk(text=before, phase="thinking")
                 state = "answer"
-                if after:
-                    yield StreamChunk(text=after, phase="answer")
+                pending = after
+                # fall through to answer-state handling
+            else:
+                if len(pending) > end_lookback:
+                    emit_now = pending[:-end_lookback] if end_lookback else pending
+                    pending = pending[-end_lookback:] if end_lookback else ""
+                    if emit_now:
+                        yield StreamChunk(text=emit_now, phase="thinking")
+                continue
+
+        if state == "answer":
+            if answer_end_marker and answer_end_marker in pending:
+                before, _after = pending.split(answer_end_marker, 1)
+                if before:
+                    yield StreamChunk(text=before, phase="answer")
+                answer_terminated = True
                 pending = ""
                 continue
 
-            if len(pending) > end_lookback:
-                emit_now = pending[:-end_lookback] if end_lookback else pending
-                pending = pending[-end_lookback:] if end_lookback else ""
+            if len(pending) > answer_end_lookback:
+                emit_now = pending[:-answer_end_lookback] if answer_end_lookback else pending
+                pending = pending[-answer_end_lookback:] if answer_end_lookback else ""
                 if emit_now:
-                    yield StreamChunk(text=emit_now, phase="thinking")
+                    yield StreamChunk(text=emit_now, phase="answer")
 
-    if pending:
+    if pending and not answer_terminated:
         if state == "pre-thinking":
             # No structured thinking ever began — treat the whole leftover
             # buffer as a final answer so the controller doesn't drop it.
-            yield StreamChunk(text=pending, phase="answer")
+            # Strip a trailing answer_end_marker if it slipped in.
+            tail = pending
+            if answer_end_marker and answer_end_marker in tail:
+                tail = tail.split(answer_end_marker, 1)[0]
+            if tail:
+                yield StreamChunk(text=tail, phase="answer")
         else:
             yield StreamChunk(text=pending, phase=state)  # type: ignore[arg-type]
 
@@ -187,14 +222,16 @@ class Gemma4ThinkingBackend:
     determinism on a fixed seed; pass ``seed`` per call to seed both
     ``torch.manual_seed`` and ``transformers.set_seed`` before generation.
 
-    The ``THINKING_START_MARKER`` / ``THINKING_END_MARKER`` class attributes
-    are the channel tokens that bracket the thinking section in the model's
-    output. Override on a subclass if a future Gemma revision changes them.
+    The ``THINKING_START_MARKER``, ``THINKING_END_MARKER``, and
+    ``ANSWER_END_MARKER`` class attributes are the channel/turn tokens that
+    bracket the thinking section and terminate the model's response.
+    Override on a subclass if a future Gemma revision changes them.
     """
 
     name: str = "gemma-4-E4B-it"
     THINKING_START_MARKER: str = THINKING_START_MARKER
     THINKING_END_MARKER: str = THINKING_END_MARKER
+    ANSWER_END_MARKER: str = ANSWER_END_MARKER
 
     def __init__(
         self,
@@ -269,6 +306,7 @@ class Gemma4ThinkingBackend:
                 iter(streamer),
                 start_marker=self.THINKING_START_MARKER,
                 end_marker=self.THINKING_END_MARKER,
+                answer_end_marker=self.ANSWER_END_MARKER,
             )
         finally:
             thread.join()
