@@ -6,8 +6,20 @@ from __future__ import annotations
 def is_free_variable(arg: str) -> bool:
     """Return True if ``arg`` looks like a free first-order variable.
 
-    The Phase 3 heuristic treats short lowercase tokens (length < 4) as
-    variables — matches the conventional ``x``, ``y``, ``z``, ``xs``, etc.
-    Reserves longer or uppercase-led tokens for ground constants.
+    Recognised as variables:
+
+    - Any single alphabetic character regardless of case — ``x``, ``y``,
+      ``z``, ``X``, ``Y``, ``Z``. Constrained-generation backends often
+      pick uppercase ``X`` for a universal quantifier even when the
+      few-shot examples used lowercase, so we accept both.
+    - Short lowercase tokens (length < 4) — ``xs``, ``abc``, ``sk1``.
+
+    Everything else (longer tokens, capitalised proper nouns like
+    ``Tom``, all-caps acronyms like ``IBM``) is treated as a ground
+    constant and must be declared in the universe.
     """
-    return bool(arg) and arg[0].islower() and len(arg) < 4
+    if not arg:
+        return False
+    if len(arg) == 1 and arg.isalpha():
+        return True
+    return arg[0].islower() and len(arg) < 4

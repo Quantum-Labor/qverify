@@ -54,16 +54,20 @@ def test_simple_propositional_translation(backend: Gemma4StructuredBackend) -> N
 
 def test_first_order_translation(backend: Gemma4StructuredBackend) -> None:
     """'All cats have fur.' produces clauses with at least one variable arg."""
+    from qverify.verifier._vars import is_free_variable
+
     schema = _generate_and_validate(backend, "All cats have fur.")
     # Every Cat / Fur / IsCat / HasFur predicate is acceptable — we just
     # require that the universal-quantifier shape (a free variable) is
-    # present somewhere in the args.
+    # present somewhere in the args. The model may pick lowercase ``x``
+    # or uppercase ``X`` for the variable; both are valid per the
+    # ``is_free_variable`` heuristic.
     args_seen: set[str] = set()
     for clause in schema.clauses:
         for lit in clause.literals:
             args_seen.update(lit.args)
-    assert any(len(a) < 4 and a[0:1].islower() for a in args_seen), (
-        f"expected at least one short lowercase variable in args; saw {args_seen}"
+    assert any(is_free_variable(a) for a in args_seen), (
+        f"expected at least one free variable in args; saw {args_seen}"
     )
 
 
