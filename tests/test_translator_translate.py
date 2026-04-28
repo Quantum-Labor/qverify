@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
+import sys
+
 import pytest
 
 from qverify.translator import CNF, TranslationError, Translator
@@ -178,3 +181,67 @@ def test_backend_failure_wraps_in_translation_error() -> None:
 
     with pytest.raises(TranslationError, match="backend failed"):
         Translator(BoomBackend()).translate("The penguin is a bird.")
+
+
+# ---------------------------------------------------------------------------
+# Constrained-generation backend integration with Translator (Phase 6)
+# ---------------------------------------------------------------------------
+
+
+def test_stub_returning_schema_conformant_string_succeeds_no_retries() -> None:
+    """The constrained-generation fast path: a schema-valid raw output
+    flows through parse_llm_output without fence-stripping or retry."""
+    statement = "Tom is a cat."
+    schema_json = (
+        '{"entities":["Tom"],'
+        '"clauses":[{"literals":[{"predicate":"Cat","args":["Tom"],"negated":false}]}]}'
+    )
+    backend = StubBackend({build_prompt(statement): schema_json})
+    result = Translator(backend, max_retries=3).translate(statement)
+    assert result.universe.constants == ("Tom",)
+    assert result.cnf.clauses[0].literals[0].predicate == "Cat"
+
+
+def test_retry_logic_still_works_for_malformed_stub_outputs() -> None:
+    """Even with the schema fast path, the retry/feedback loop must still
+    handle backends that emit garbage on attempt one."""
+    backend = SequentialBackend(
+        [
+            "this is garbage and will not parse",
+            ATOMIC_JSON,
+        ]
+    )
+    result = Translator(backend, max_retries=3).translate("The penguin is a bird.")
+    assert result.cnf.clauses[0].literals[0].predicate == "Bird"
+    assert len(backend.calls) == 2
+
+
+def test_gemma_e2b_alias_resolves_to_structured_backend() -> None:
+    """``GemmaE2BBackend`` is now an alias for the constrained-generation
+    backend; existing imports must continue to resolve."""
+    from qverify.translator.llm import Gemma4StructuredBackend, GemmaE2BBackend
+
+    assert GemmaE2BBackend is Gemma4StructuredBackend
+
+
+def test_importing_qverify_translator_does_not_load_outlines() -> None:
+    """Spawn a fresh interpreter to assert lazy-load — neither outlines
+    nor transformers nor torch may appear in sys.modules just from
+    importing qverify.translator."""
+    code = (
+        "import sys; "
+        "import qverify.translator; "
+        "leaked = [m for m in sys.modules if any("
+        "    m == x or m.startswith(x + '.') for x in ('outlines', 'transformers', 'torch')"
+        ")]; "
+        "assert not leaked, f'leaked: {leaked}'; "
+        "print('ok')"
+    )
+    proc = subprocess.run(
+        [sys.executable, "-c", code],
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert proc.returncode == 0, proc.stderr
+    assert "ok" in proc.stdout

@@ -1,6 +1,6 @@
 # Translator
 
-The Translator turns one natural-language reasoning step into a [`TranslationResult`](../qverify/translator/types.py) carrying both a (possibly first-order) CNF and the universe of constants the controller needs to ground that CNF before handing it to Grover's search. The pipeline is two-stage on purpose: a small instruction-tuned LLM (Gemma 4 E2B) does the open-ended translation, and a strict deterministic parser refuses to accept anything that does not validate against the schema. We never trust the LLM output directly.
+The Translator turns one natural-language reasoning step into a [`TranslationResult`](../qverify/translator/types.py) carrying both a (possibly first-order) CNF and the universe of constants the controller needs to ground that CNF before handing it to Grover's search. As of Phase 6, the production backend uses **grammar-constrained generation** via [outlines](https://github.com/dottxt-ai/outlines): the LLM's token-level generation is constrained by a Pydantic schema, so syntactically invalid output is mathematically impossible. Combined with the strict deterministic parser this gives two layers of defence — outlines guarantees the JSON shape, and the parser surfaces any *semantic* mismatches (wrong predicate case, free variable declared as a constant) with a clear `TranslationParseError`.
 
 ## Public return type
 
@@ -59,6 +59,8 @@ CNF(clauses=(
 
 ## Retry strategy
 
+Constrained generation has changed what retries mean. With outlines guarding the token-level shape, the parser's first job — *is this valid JSON in the right schema?* — succeeds by construction. The retry budget is now reserved for **semantic** failures: an outlines-emitted output that's syntactically valid but rejected by the parser's deeper checks (lowercase predicate, constant missing from `entities`, etc.). On a freeform-emitting backend (e.g. a stub that returns garbage) the same retry path covers both syntactic and semantic problems.
+
 The `Translator` retries up to `max_retries` times (default 3) on parse failure. The escalation:
 
 | Attempt | Prompt |
@@ -91,7 +93,7 @@ attempt 3 raw: "{\"clauses\": [{\"literals\": [...]}]}"  -> SUCCESS  (stricter p
 
 [`qverify/translator/llm.py`](../qverify/translator/llm.py) defines the `TranslationBackend` Protocol. Two implementations ship today:
 
-- `GemmaE2BBackend` — production. Lazy-loads Gemma 4 E2B (gated; default id is `qverify.utils.models.TRANSLATOR_MODEL_ID`, currently `google/gemma-4-E2B-it`) on the first `generate()` call; never at import time. Accept the Gemma license at https://huggingface.co/google/gemma-4-E2B-it before first use. Uses bfloat16 + `device_map="auto"` and greedy decoding for determinism.
+- `Gemma4StructuredBackend` (alias `GemmaE2BBackend`) — production, constrained-generation via outlines. Lazy-loads Gemma 4 E2B (gated; default id is `qverify.utils.models.TRANSLATOR_MODEL_ID`, currently `google/gemma-4-E2B-it`) on the first `generate()` call. Accept the Gemma license at https://huggingface.co/google/gemma-4-E2B-it before first use. Uses bfloat16 + `device_map="auto"`. Outlines compiles [`TranslationSchema`](../qverify/translator/schema.py) into a token-level finite state machine on the first call (~few seconds); subsequent translations are normal generate-token speed. The old `GemmaE2BBackend` name is preserved as an alias so existing imports keep working.
 - `StubBackend(responses: dict[str, str])` — for tests. Returns canned responses keyed by exact prompt.
 
 To swap in a different backend (e.g. an OpenAI-compatible server, a vLLM endpoint, or a different Gemma variant) implement the two-method Protocol and pass the instance to `Translator(backend=...)`.
