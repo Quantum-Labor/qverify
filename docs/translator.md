@@ -1,6 +1,38 @@
 # Translator
 
-The Translator turns one natural-language reasoning step into a Conjunctive Normal Form (CNF) Boolean formula that the Phase 3 verifier can hand to Grover's search. The pipeline is two-stage on purpose: a small instruction-tuned LLM (Gemma 4 E2B) does the open-ended translation, and a strict deterministic parser refuses to accept anything that does not validate against the [`CNF`](../qverify/translator/cnf.py) schema. We never trust the LLM output directly.
+The Translator turns one natural-language reasoning step into a [`TranslationResult`](../qverify/translator/types.py) carrying both a (possibly first-order) CNF and the universe of constants the controller needs to ground that CNF before handing it to Grover's search. The pipeline is two-stage on purpose: a small instruction-tuned LLM (Gemma 4 E2B) does the open-ended translation, and a strict deterministic parser refuses to accept anything that does not validate against the schema. We never trust the LLM output directly.
+
+## Public return type
+
+```python
+from qverify.translator import Translator, TranslationResult
+from qverify.translator.llm import GemmaE2BBackend
+
+translator = Translator(backend=GemmaE2BBackend())
+result: TranslationResult = translator.translate("The penguin is a bird.")
+result.cnf       # CNF — the propositional / first-order formula
+result.universe  # Universe — constants declared in this statement
+```
+
+`TranslationResult` is a frozen Pydantic model (`cnf: CNF`, `universe: Universe`). The Phase 5 controller merges universes across translator calls and grounds the combined CNF before verification.
+
+## JSON schema the LLM emits
+
+```json
+{
+  "entities": ["penguin", "Tom", "Whiskers"],
+  "clauses": [
+    {"literals": [
+      {"predicate": "Bird", "args": ["penguin"], "negated": false}
+    ]}
+  ]
+}
+```
+
+- `entities` — the universe of declared constants for this statement. Every literal argument that is not a free variable (lowercase, length < 4) MUST appear here; conversely, no variable may appear here. Empty `[]` is allowed only for purely propositional statements or universals with no concrete constants.
+- `clauses` — same shape as the original Phase 2 schema.
+
+The defensive [parser](../qverify/translator/parser.py) validates the entities-vs-literal-args consistency and raises `TranslationParseError` on any mismatch. When the `entities` field is absent in the LLM output, the parser logs a warning and defaults to an empty universe (Phase 2 backwards compatibility).
 
 ## CNF data model
 

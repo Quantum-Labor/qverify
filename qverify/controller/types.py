@@ -119,6 +119,7 @@ class ControllerResult(BaseModel):
     gave_up_steps: tuple[str, ...] = Field(default_factory=tuple)
     total_verifications: int = 0
     total_contradictions_found: int = 0
+    total_groundings: int = 0
     wall_clock_seconds: float = 0.0
 
     model_config = {"frozen": True}

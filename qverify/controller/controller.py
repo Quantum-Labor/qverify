@@ -25,7 +25,9 @@ from qverify.translator.translator import Translator
 from qverify.translator.types import TranslationResult
 from qverify.utils.logging import get_logger
 from qverify.verifier import verify as default_verify
+from qverify.verifier._universe import Universe
 from qverify.verifier.backends import Backend
+from qverify.verifier.grounding import ground_cnf
 from qverify.verifier.types import VerificationResult
 
 
@@ -98,6 +100,7 @@ class Controller:
         self._verify_fn: VerifyFn | None = verify_fn
         self._max_retries_per_step: int = max_retries_per_step
         self._premise_translation_cache: dict[str, TranslationResult] = {}
+        self._total_groundings: int = 0
 
     def reason(
         self,
@@ -109,6 +112,9 @@ class Controller:
     ) -> ControllerResult:
         emit_event = emit if emit is not None else _noop_emit
         start_wall = time.monotonic()
+        # Reset per-run grounding counter so repeated reason() calls on the
+        # same Controller instance don't leak counts between runs.
+        self._total_groundings = 0
 
         messages: list[dict[str, str]] = [{"role": "user", "content": problem}]
 
@@ -181,6 +187,7 @@ class Controller:
             gave_up_steps=tuple(gave_up_steps),
             total_verifications=total_verifications,
             total_contradictions_found=total_contradictions_found,
+            total_groundings=self._total_groundings,
             wall_clock_seconds=time.monotonic() - start_wall,
         )
 
@@ -302,25 +309,46 @@ class Controller:
         step: str,
         translator: _TranslatorLike,
     ) -> CNF:
-        # Phase 4.5: per-premise + negated-step translations are merged and
-        # then grounded against the union of all declared universes before
-        # being handed to the verifier. Commit 3 of Phase 4.5 wires the
-        # full grounding path; for now we just thread the new
-        # TranslationResult return type through and concatenate clauses.
-        all_clauses: list[Clause] = []
+        """Translate every premise plus the negated step, merge the universes,
+        and ground the combined first-order CNF before returning it.
+
+        The verifier still sees only propositional CNF — grounding happens
+        here, in the controller, against the union of constants declared by
+        every translator call in this run.
+        """
+        # Translate the negated step first; this is always called fresh
+        # because the step text changes between attempts.
+        neg_result = translator.translate(f"It is not the case that {step}")
+
+        all_results: list[TranslationResult] = [neg_result]
         for premise in premises:
             cached = self._premise_translation_cache.get(premise)
             if cached is None:
                 cached = translator.translate(premise)
                 self._premise_translation_cache[premise] = cached
-            all_clauses.extend(cached.cnf.clauses)
+            all_results.append(cached)
 
-        # Translate the negation of the candidate step. We rely on the
-        # translator to handle the natural-language negation rather than
-        # negating CNFs algebraically (which converts to DNF in general).
-        neg_result = translator.translate(f"It is not the case that {step}")
-        all_clauses.extend(neg_result.cnf.clauses)
-        return CNF(clauses=tuple(all_clauses))
+        # Merge universes — union of constants across all translation
+        # results, deduplicated and sorted (Universe's validator does both).
+        merged_constants: set[str] = set()
+        for r in all_results:
+            merged_constants.update(r.universe.constants)
+        merged_universe = Universe(constants=tuple(merged_constants))
+
+        # Combine CNFs — concatenate clauses from every result. Empty CNFs
+        # contribute nothing, which is the documented "translator declined
+        # to extract logical content" path.
+        all_clauses: list[Clause] = []
+        for r in all_results:
+            all_clauses.extend(r.cnf.clauses)
+        combined_cnf = CNF(clauses=tuple(all_clauses))
+
+        # Ground the combined first-order CNF against the merged universe.
+        # ground_cnf returns the input unchanged when there are no free
+        # variables, so propositional inputs are zero-cost.
+        grounded = ground_cnf(combined_cnf, merged_universe)
+        self._total_groundings += 1
+        return grounded
 
     def _request_step_rewrite(
         self,

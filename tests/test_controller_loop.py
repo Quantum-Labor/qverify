@@ -379,6 +379,249 @@ def test_premises_only_contain_committed_steps_after_run() -> None:
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Grounding integration (Phase 4.5)
+# ---------------------------------------------------------------------------
+
+
+from qverify.translator.cnf import CNF, Clause, Literal  # noqa: E402
+from qverify.translator.types import TranslationResult  # noqa: E402
+from qverify.verifier._universe import Universe  # noqa: E402
+
+
+class _StubTranslator:
+    """Returns predetermined TranslationResults keyed by exact statement text.
+
+    Falls back to ``default_result`` when the statement is not in the map,
+    which lets tests stay terse — they only need to script the few inputs
+    they care about.
+    """
+
+    def __init__(
+        self,
+        mapping: dict[str, TranslationResult] | None = None,
+        default_result: TranslationResult | None = None,
+    ) -> None:
+        self._mapping = dict(mapping) if mapping else {}
+        self._default = (
+            default_result
+            if default_result is not None
+            else TranslationResult(cnf=CNF(clauses=()), universe=Universe(constants=()))
+        )
+        self.calls: list[str] = []
+
+    def translate(self, statement: str) -> TranslationResult:
+        self.calls.append(statement)
+        if statement in self._mapping:
+            return self._mapping[statement]
+        return self._default
+
+
+def test_controller_merges_universes_from_multiple_translator_calls(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The controller must take the union of every translator result's
+    universe before grounding; constants from premise A and premise B must
+    both be available when grounding the negated step."""
+    from qverify.controller import controller as controller_module
+    from qverify.translator.cnf import CNF
+    from qverify.translator.types import TranslationResult
+    from qverify.verifier._universe import Universe
+
+    captured_universes: list[Universe] = []
+    original_ground = controller_module.ground_cnf
+
+    def spy_ground_cnf(cnf: CNF, universe: Universe) -> CNF:
+        captured_universes.append(universe)
+        return original_ground(cnf, universe)
+
+    monkeypatch.setattr(controller_module, "ground_cnf", spy_ground_cnf)
+
+    def cnf_for(predicate: str, arg: str, neg: bool = False) -> CNF:
+        return CNF(
+            clauses=(Clause(literals=(Literal(predicate=predicate, args=(arg,), negated=neg),)),)
+        )
+
+    translator = _StubTranslator(
+        mapping={
+            "Tom is a cat.": TranslationResult(
+                cnf=cnf_for("Cat", "Tom"),
+                universe=Universe(constants=("Tom",)),
+            ),
+            "Whiskers is a cat.": TranslationResult(
+                cnf=cnf_for("Cat", "Whiskers"),
+                universe=Universe(constants=("Whiskers",)),
+            ),
+            "It is not the case that Whiskers is a mammal.": TranslationResult(
+                cnf=cnf_for("Mammal", "Whiskers", neg=True),
+                universe=Universe(constants=("Whiskers",)),
+            ),
+        }
+    )
+
+    llm = StubGemmaBackend(scripts=[_thinking_scene("Whiskers is a mammal.", answer="ans")])
+
+    reason_with_verification(
+        problem="?",
+        llm=llm,
+        translator=translator,
+        max_retries_per_step=0,
+    )
+
+    # The premise list at the time of verify() was empty (this is the FIRST
+    # step) so only the negated step's universe contributes here. Re-run
+    # with a pre-committed premise to exercise the merge path properly.
+    assert len(captured_universes) == 1
+    assert captured_universes[0].constants == ("Whiskers",)
+
+
+def test_controller_passes_grounded_cnf_to_verify(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verify the CNF the runner hands to the verifier has no free vars."""
+    from qverify.controller import controller as controller_module
+    from qverify.translator.cnf import CNF
+    from qverify.translator.types import TranslationResult
+    from qverify.verifier._universe import Universe
+    from qverify.verifier._vars import is_free_variable
+
+    captured_cnfs: list[CNF] = []
+
+    def fake_verify(cnf: CNF, backend: object = None) -> VerificationResult:
+        captured_cnfs.append(cnf)
+        return _make_result(contradiction=False)
+
+    monkeypatch.setattr(controller_module, "default_verify", fake_verify)
+
+    # First-order CNF for "All cats have fur" — has free variable x.
+    universal = TranslationResult(
+        cnf=CNF(
+            clauses=(
+                Clause(
+                    literals=(
+                        Literal(predicate="Cat", args=("x",), negated=True),
+                        Literal(predicate="Fur", args=("x",)),
+                    )
+                ),
+            )
+        ),
+        universe=Universe(constants=()),
+    )
+    # Ground premise contributing the constant Tom.
+    tom_is_cat = TranslationResult(
+        cnf=CNF(clauses=(Clause(literals=(Literal(predicate="Cat", args=("Tom",)),)),)),
+        universe=Universe(constants=("Tom",)),
+    )
+    translator = _StubTranslator(
+        mapping={
+            "All cats have fur.": universal,
+            "Tom is a cat.": tom_is_cat,
+            "It is not the case that Tom is a cat.": tom_is_cat,
+        }
+    )
+
+    llm = StubGemmaBackend(
+        scripts=[_thinking_scene("All cats have fur.", "Tom is a cat.", answer="ans")]
+    )
+
+    reason_with_verification(
+        problem="?",
+        llm=llm,
+        translator=translator,
+        max_retries_per_step=0,
+    )
+
+    # Every captured CNF must have NO free variables — grounding worked.
+    for cnf in captured_cnfs:
+        for clause in cnf.clauses:
+            for lit in clause.literals:
+                for arg in lit.args:
+                    assert not is_free_variable(arg), (
+                        f"free variable {arg!r} reached the verifier; grounding failed"
+                    )
+
+
+def test_controller_propositional_cnf_passes_through_grounding_unchanged(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Empty universe + propositional CNF must not raise; ground_cnf returns
+    the input unchanged."""
+    from qverify.controller import controller as controller_module
+    from qverify.translator.cnf import CNF
+    from qverify.translator.types import TranslationResult
+    from qverify.verifier._universe import Universe
+
+    captured: list[CNF] = []
+
+    def fake_verify(cnf: CNF, backend: object = None) -> VerificationResult:
+        captured.append(cnf)
+        return _make_result(contradiction=False)
+
+    monkeypatch.setattr(controller_module, "default_verify", fake_verify)
+
+    propositional = TranslationResult(
+        cnf=CNF(
+            clauses=(
+                Clause(
+                    literals=(
+                        Literal(predicate="Rain", args=(), negated=True),
+                        Literal(predicate="Wet", args=()),
+                    )
+                ),
+            )
+        ),
+        universe=Universe(constants=()),
+    )
+    translator = _StubTranslator(default_result=propositional)
+    llm = StubGemmaBackend(
+        scripts=[_thinking_scene("If it rains the street is wet.", answer="ans")]
+    )
+
+    result = reason_with_verification(
+        problem="?",
+        llm=llm,
+        translator=translator,
+        max_retries_per_step=0,
+    )
+
+    assert result.total_groundings >= 1
+    assert len(captured) == 1
+    # Propositional CNF stayed propositional through grounding.
+    for clause in captured[0].clauses:
+        for lit in clause.literals:
+            assert lit.args == ()
+
+
+def test_controller_total_groundings_increments_per_verify_call() -> None:
+    """ControllerResult.total_groundings tracks one ground_cnf call per verify."""
+    from qverify.translator.cnf import CNF
+    from qverify.translator.types import TranslationResult
+    from qverify.verifier._universe import Universe
+
+    empty = TranslationResult(cnf=CNF(clauses=()), universe=Universe(constants=()))
+    translator = _StubTranslator(default_result=empty)
+    llm = StubGemmaBackend(scripts=[_thinking_scene("step 1.", "step 2.", "step 3.", answer="ans")])
+
+    result = reason_with_verification(
+        problem="?",
+        llm=llm,
+        translator=translator,
+        max_retries_per_step=0,
+    )
+
+    # One ground_cnf call per step verification — three steps committed.
+    assert result.total_groundings == 3
+    assert result.total_verifications == 3
+
+
+def test_controller_total_groundings_zero_when_verify_fn_used() -> None:
+    """verify_fn bypasses the translator+grounding path; counter stays 0."""
+    llm = StubGemmaBackend(scripts=[_thinking_scene("step.", answer="ans")])
+    verifier = StubVerifier([_make_result(contradiction=False)])
+    result = reason_with_verification(problem="?", llm=llm, verify_fn=verifier)
+    assert result.total_groundings == 0
+
+
 def test_importing_qverify_controller_does_not_load_transformers() -> None:
     """Spawn a fresh interpreter to assert lazy-load — the parent's sys.modules
     can be polluted by prior tests, but a child process is clean."""

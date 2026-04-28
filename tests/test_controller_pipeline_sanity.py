@@ -85,6 +85,7 @@ def test_pipeline_sanity_with_scripted_thinking(
     print(f"rejected_steps:      {len(result.rejected_steps)}")
     print(f"gave_up_steps:       {len(result.gave_up_steps)}")
     print(f"total_verifications: {result.total_verifications}")
+    print(f"total_groundings:    {result.total_groundings}")
     print(f"wall_clock_seconds:  {result.wall_clock_seconds:.1f}")
     for i, step in enumerate(result.committed_steps):
         print(f"  committed[{i}]: {step!r}")
@@ -101,4 +102,8 @@ def test_pipeline_sanity_with_scripted_thinking(
     # The point of the sanity check: at least one step was actually verified.
     assert result.total_verifications >= 1, (
         "no verifications happened — translator or controller is broken"
+    )
+    # Phase 4.5: at least one grounding pass should have occurred too.
+    assert result.total_groundings >= 1, (
+        "no groundings happened — controller's grounding integration is broken"
     )
