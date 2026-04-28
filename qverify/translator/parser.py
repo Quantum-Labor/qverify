@@ -8,6 +8,7 @@ import re
 from pydantic import ValidationError
 
 from qverify.translator.cnf import CNF
+from qverify.translator.schema import TranslationSchema
 from qverify.translator.types import TranslationResult
 from qverify.utils.logging import get_logger
 from qverify.verifier._universe import Universe
@@ -37,48 +38,100 @@ class TranslationParseError(ValueError):
 def parse_llm_output(raw: str) -> TranslationResult:
     """Extract and validate a TranslationResult from raw LLM output.
 
-    Strips a UTF-8 BOM, surrounding whitespace, markdown code fences, and any
-    prose before the first ``{`` or after the matching ``}``. Then validates
-    the JSON against the schema:
+    Two paths:
 
-    .. code-block:: json
+    1. **Fast path** — when the constrained-generation backend
+       (:class:`qverify.translator.llm.Gemma4StructuredBackend`) emits
+       output, the entire string is already a valid
+       :class:`TranslationSchema` JSON document. The fast path validates
+       directly against the schema with no fence-stripping.
+    2. **Defensive path** — for stub outputs and any free-form-emitting
+       backend, strip BOM, markdown fences, and surrounding prose; pull
+       out the first balanced ``{...}``; then re-run the schema
+       validation. This is the original Phase 4.5 logic, kept as a
+       safety net.
 
-        {"entities": ["Tom", "Whiskers"],
-         "clauses": [{"literals": [...]}]}
-
-    The ``entities`` list becomes a :class:`Universe`. When absent, an
-    empty universe is assumed and a warning is logged. Every constant
-    appearing as a literal argument must be in ``entities``; every
-    free-variable-shaped argument must NOT be. Mismatch raises
-    :class:`TranslationParseError` with the full raw output attached.
+    Either path ends in the same entities↔literal-args consistency check
+    so semantic mismatches still raise :class:`TranslationParseError`
+    even when the syntax was guaranteed by constrained generation.
     """
     if not isinstance(raw, str) or not raw.strip():
         raise TranslationParseError("LLM output is empty", raw=raw or "")
 
-    cleaned = raw.lstrip("﻿").strip()
-    cleaned = _FENCE_OPEN.sub("", cleaned, count=1)
-    cleaned = _FENCE_CLOSE.sub("", cleaned, count=1)
-    cleaned = cleaned.strip()
+    schema = _try_parse_schema_directly(raw)
+    if schema is None:
+        cleaned = raw.lstrip("﻿").strip()
+        cleaned = _FENCE_OPEN.sub("", cleaned, count=1)
+        cleaned = _FENCE_CLOSE.sub("", cleaned, count=1)
+        cleaned = cleaned.strip()
 
-    json_text = _extract_first_json_object(cleaned)
-    if json_text is None:
-        raise TranslationParseError("no JSON object found in output", raw=raw)
+        json_text = _extract_first_json_object(cleaned)
+        if json_text is None:
+            raise TranslationParseError("no JSON object found in output", raw=raw)
 
-    try:
-        data = json.loads(json_text)
-    except json.JSONDecodeError as exc:
-        raise TranslationParseError(f"invalid JSON: {exc.msg}", raw=raw) from exc
+        try:
+            data = json.loads(json_text)
+        except json.JSONDecodeError as exc:
+            raise TranslationParseError(f"invalid JSON: {exc.msg}", raw=raw) from exc
 
-    if not isinstance(data, dict):
-        raise TranslationParseError(
-            f"top-level JSON must be an object, got {type(data).__name__}",
-            raw=raw,
-        )
+        if not isinstance(data, dict):
+            raise TranslationParseError(
+                f"top-level JSON must be an object, got {type(data).__name__}",
+                raw=raw,
+            )
 
-    cnf = _build_cnf(data, raw)
-    universe = _build_universe(data, raw)
+        cnf = _build_cnf(data, raw)
+        universe = _build_universe(data, raw)
+    else:
+        cnf = _cnf_from_schema(schema, raw)
+        universe = _universe_from_schema(schema, raw)
+
     _validate_entities_vs_literal_args(cnf, universe, raw)
     return TranslationResult(cnf=cnf, universe=universe)
+
+
+def _try_parse_schema_directly(raw: str) -> TranslationSchema | None:
+    """Attempt the constrained-generation fast path.
+
+    Returns the validated :class:`TranslationSchema` when the entire
+    stripped string parses cleanly, ``None`` otherwise. We swallow the
+    exception so the defensive path can run; the defensive path will
+    surface a clearer error if both fail.
+    """
+    stripped = raw.strip()
+    if not stripped or not stripped.startswith("{"):
+        return None
+    try:
+        return TranslationSchema.model_validate_json(stripped)
+    except ValidationError:
+        return None
+
+
+def _cnf_from_schema(schema: TranslationSchema, raw: str) -> CNF:
+    """Convert a :class:`TranslationSchema` into the strict :class:`CNF` model.
+
+    The schema is permissive (any string predicate, possibly-empty literal
+    list); the CNF model adds the predicate-case and non-empty-clause
+    invariants from Phase 2. Surface those rejections as
+    :class:`TranslationParseError`.
+    """
+    try:
+        return CNF.model_validate({"clauses": [c.model_dump() for c in schema.clauses]})
+    except ValidationError as exc:
+        raise TranslationParseError(
+            f"output does not match CNF schema: {_format_validation_error(exc)}",
+            raw=raw,
+        ) from exc
+
+
+def _universe_from_schema(schema: TranslationSchema, raw: str) -> Universe:
+    try:
+        return Universe(constants=tuple(schema.entities))
+    except ValidationError as exc:
+        raise TranslationParseError(
+            f"invalid universe: {_format_validation_error(exc)}",
+            raw=raw,
+        ) from exc
 
 
 def _build_cnf(data: dict[str, object], raw: str) -> CNF:
