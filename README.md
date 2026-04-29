@@ -26,7 +26,7 @@ invisible, semantically material, and not caught by any output-layer filter.
 
 QVerify adds a formal consistency check after each reasoning step. The check
 is automated (no human reads each step) and grounded in satisfiability theory
-(NP-complete in the general case). The quantum component — Grover's search —
+(NP-complete in the general case). The quantum component, Grover's search,
 provides a quadratic speedup over classical brute-force SAT for the sizes that
 matter in practice when verifying single reasoning steps against a growing set
 of premises.
@@ -147,8 +147,8 @@ They are provided so the reader can calibrate expectations, not as claims.
 
 The simulator path scales poorly past ~12 variables because statevector
 simulation requires 2^n complex amplitudes. At 12 variables that is 4,096
-amplitudes; at 20 it is 1,048,576. For the current use case — verifying
-individual reasoning steps against 3-8 premises over a handful of constants —
+amplitudes; at 20 it is 1,048,576. For the current use case (verifying
+individual reasoning steps against 3-8 premises over a handful of constants),
 the grounded CNF typically has 4-10 variables, which the simulator handles in
 milliseconds.
 
@@ -183,7 +183,7 @@ consistency mode by default: it checks that `premises ∧ step` is satisfiable.
 A satisfying assignment means the step is consistent with everything established
 so far; UNSAT means the step contradicts a premise. This is cheaper to compute
 than full entailment (`premises ∧ ¬step` UNSAT) and catches the failure mode
-that matters most in practice — a step that contradicts what the model already
+that matters most in practice: a step that contradicts what the model already
 said.
 
 **First-order input, propositional execution.** The translator and grounder
