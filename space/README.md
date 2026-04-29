@@ -3,27 +3,29 @@ title: QVerify
 emoji: 🔬
 colorFrom: blue
 colorTo: orange
-sdk: gradio
-sdk_version: "5.0.0"
-app_file: app.py
+sdk: docker
+app_port: 7860
 pinned: false
 license: apache-2.0
-hardware: zero-a10g
+hardware: cpu-basic
 tags:
-  - gemma
-  - gemma-4
   - quantum-computing
   - qiskit
   - pennylane
   - llm-verification
   - logic
+  - grover
 ---
 
-# QVerify
+# QVerify (verifier-only Space)
 
-Quantum-assisted verification of structured logical reasoning. Built with
-Gemma 4 by Google DeepMind, Grover's search via PennyLane and Qiskit, and
-optional execution on IBM Quantum's Heron r2 processor.
+This Space exposes the QVerify verifier component: a CNF is fed
+straight to Grover's search, on either a CPU-side PennyLane simulator
+or IBM Quantum's Heron r2 processor.
+
+The translator (Gemma 4 E4B with grammar-constrained generation)
+requires a GPU and is not loaded here. The full pipeline (translator
+plus grounding plus verifier) runs locally from the GitHub repo.
 
 [Code](https://github.com/Quantum-Labor/qverify) ·
 [Documentation](https://github.com/Quantum-Labor/qverify/tree/main/docs)
