@@ -734,14 +734,15 @@ with gr.Blocks(title="QVerify") as demo:
         "host the translator, so this Space is verifier-only. See the "
         "[GitHub repository](https://github.com/Quantum-Labor/qverify) "
         "for the end-to-end pipeline.\n\n"
-        "**IBM hardware runs may take 2-20 minutes** due to free-tier "
-        "queue plus on-device execution and result fetch. The live "
-        f"button polls automatically every {POLL_INTERVAL_SECONDS} s "
-        f"for up to {LIVE_POLL_TIMEOUT_SECONDS // 60} minutes; if the "
-        "connection drops during a long run, use the 'Recover a "
-        "previous job' panel above with the Job ID from your initial "
-        "submission. Hardware credit is shared across users on the "
-        "Open Plan (~10 minutes/month total)."
+        "**IBM hardware runs are submitted via your IBM Quantum "
+        "free-tier account** (Open Plan, approximately 10 minutes of "
+        "quantum time per month, shared across users). The Space "
+        "orchestrates the call; the actual circuit executes on "
+        "`ibm_fez` (Heron r2, 156 qubits) via IBM Cloud. Live polling "
+        f"updates the UI every {POLL_INTERVAL_SECONDS} s; if the "
+        "connection drops, use the fallback panel above with the Job "
+        "ID. Previously verified hardware runs are documented "
+        "[here](https://github.com/Quantum-Labor/qverify#hardware-run)."
     )
 
 
