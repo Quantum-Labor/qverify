@@ -308,3 +308,5 @@ Apache 2.0. See [LICENSE](LICENSE).
 
 ## Author
 
+
+Serghei Brinza ([@SergheiBrinza](https://github.com/SergheiBrinza))
