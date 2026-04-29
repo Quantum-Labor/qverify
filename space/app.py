@@ -128,9 +128,7 @@ def _format_cnf(cnf: CNF) -> str:
 def _on_example_change(label: str) -> tuple[str, str, str]:
     """Update the CNF preview, universe preview, and description on dropdown change."""
     ex = EXAMPLES[label]
-    universe_str = (
-        ", ".join(ex.universe.constants) if ex.universe.constants else "(empty)"
-    )
+    universe_str = ", ".join(ex.universe.constants) if ex.universe.constants else "(empty)"
     return _format_cnf(ex.cnf), universe_str, ex.description
 
 
@@ -263,9 +261,7 @@ with gr.Blocks(title="QVerify") as demo:
 
             gr.Markdown("### 3. Run")
             with gr.Row():
-                btn_sim = gr.Button(
-                    "Verify on PennyLane simulator", variant="primary"
-                )
+                btn_sim = gr.Button("Verify on PennyLane simulator", variant="primary")
                 btn_hw = gr.Button(
                     "Verify on IBM Heron r2",
                     variant="secondary",
