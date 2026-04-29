@@ -133,6 +133,7 @@ class ControllerResult(BaseModel):
     total_verifications: int = 0
     total_contradictions_found: int = 0
     total_groundings: int = 0
+    total_answer_steps_extracted: int = 0
     initial_universe_size: int = 0
     wall_clock_seconds: float = 0.0
 

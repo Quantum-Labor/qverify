@@ -46,14 +46,16 @@ def scripted_llm() -> StubGemmaBackend:
     in an outer list of length one.
     """
     scene = [
-        # Thinking phase — three clean syllogism steps separated by \n\n.
-        StreamChunk(text="All cats have fur.", phase="thinking"),
-        StreamChunk(text="\n\n", phase="thinking"),
-        StreamChunk(text="Tom is a cat.", phase="thinking"),
-        StreamChunk(text="\n\n", phase="thinking"),
-        StreamChunk(text="Therefore Tom has fur.", phase="thinking"),
-        # Answer phase.
-        StreamChunk(text="Yes, Tom has fur.", phase="answer"),
+        # Phase 6.7: thinking is captured but not split for verification;
+        # the verifier operates on the answer phase. Keep a brief thinking
+        # chunk to exercise both phases.
+        StreamChunk(text="Let me reason step by step about this.", phase="thinking"),
+        StreamChunk(text="\n", phase="thinking"),
+        # Answer phase — three numbered declarative steps + final answer.
+        StreamChunk(text="1. All cats have fur.\n", phase="answer"),
+        StreamChunk(text="2. Tom is a cat.\n", phase="answer"),
+        StreamChunk(text="3. Therefore Tom has fur.\n", phase="answer"),
+        StreamChunk(text="\nYes, Tom has fur.", phase="answer"),
     ]
     return StubGemmaBackend(scripts=[scene])
 
@@ -80,13 +82,15 @@ def test_pipeline_sanity_with_scripted_thinking(
     )
 
     print("\n=== Sanity check result ===")
-    print(f"final_answer:        {result.final_answer!r}")
-    print(f"committed_steps:     {len(result.committed_steps)}")
-    print(f"rejected_steps:      {len(result.rejected_steps)}")
-    print(f"gave_up_steps:       {len(result.gave_up_steps)}")
-    print(f"total_verifications: {result.total_verifications}")
-    print(f"total_groundings:    {result.total_groundings}")
-    print(f"wall_clock_seconds:  {result.wall_clock_seconds:.1f}")
+    print(f"final_answer:                   {result.final_answer!r}")
+    print(f"committed_steps:                {len(result.committed_steps)}")
+    print(f"rejected_steps:                 {len(result.rejected_steps)}")
+    print(f"gave_up_steps:                  {len(result.gave_up_steps)}")
+    print(f"total_verifications:            {result.total_verifications}")
+    print(f"total_groundings:               {result.total_groundings}")
+    print(f"total_answer_steps_extracted:   {result.total_answer_steps_extracted}")
+    print(f"initial_universe_size:          {result.initial_universe_size}")
+    print(f"wall_clock_seconds:             {result.wall_clock_seconds:.1f}")
     for i, step in enumerate(result.committed_steps):
         print(f"  committed[{i}]: {step!r}")
     for i, rejected in enumerate(result.rejected_steps):
@@ -113,4 +117,9 @@ def test_pipeline_sanity_with_scripted_thinking(
     # universal couldn't be grounded.
     assert result.initial_universe_size >= 1, (
         "expected at least one entity (Tom) extracted from the problem"
+    )
+    # Phase 6.7: the controller now extracts numbered steps from the
+    # answer phase; the scripted scene emits exactly three.
+    assert result.total_answer_steps_extracted >= 1, (
+        "no answer-phase steps extracted — the new verification path is broken"
     )

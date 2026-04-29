@@ -21,6 +21,7 @@ from qverify.controller.types import (
     RejectedStep,
     StreamChunk,
 )
+from qverify.controller.utils import extract_answer_steps
 from qverify.translator import CNF, Clause
 from qverify.translator.translator import TranslationError, Translator
 from qverify.translator.types import TranslationResult
@@ -142,6 +143,10 @@ class Controller:
         total_verifications = 0
         total_contradictions_found = 0
 
+        # Phase 6.7: thinking content is collected for display only — the
+        # verifier operates on the answer phase, where Gemma 4 emits its
+        # numbered, declarative reasoning steps. Splitting the freeform
+        # thinking-phase paragraphs proved to be the wrong granularity.
         answer_buffer = ""
         thinking_buffer = ""
 
@@ -150,36 +155,15 @@ class Controller:
         for chunk in chunk_iter:
             if chunk.phase == "answer":
                 answer_buffer += chunk.text
-                continue
+            else:
+                thinking_buffer += chunk.text
 
-            thinking_buffer += chunk.text
-            while "\n\n" in thinking_buffer:
-                step, thinking_buffer = thinking_buffer.split("\n\n", 1)
-                step = step.strip()
-                if not step:
-                    continue
-
-                outcome = self._process_step(
-                    step=step,
-                    premises=premises,
-                    emit_event=emit_event,
-                    seed=seed,
-                )
-                total_verifications += outcome.verifications
-                total_contradictions_found += outcome.contradictions
-                if outcome.committed_text is not None:
-                    committed_steps.append(outcome.committed_text)
-                    premises.append(outcome.committed_text)
-                if outcome.rejected_record is not None:
-                    rejected_records.append(outcome.rejected_record)
-                if outcome.gave_up_text is not None:
-                    gave_up_steps.append(outcome.gave_up_text)
-
-        # Flush any trailing partial step that lacked a final blank line.
-        trailing = thinking_buffer.strip()
-        if trailing:
+        # After the stream completes, extract numbered reasoning steps
+        # from the answer phase and verify each one in turn.
+        extracted_steps = extract_answer_steps(answer_buffer)
+        for step in extracted_steps:
             outcome = self._process_step(
-                step=trailing,
+                step=step,
                 premises=premises,
                 emit_event=emit_event,
                 seed=seed,
@@ -205,6 +189,7 @@ class Controller:
             total_verifications=total_verifications,
             total_contradictions_found=total_contradictions_found,
             total_groundings=self._total_groundings,
+            total_answer_steps_extracted=len(extracted_steps),
             initial_universe_size=len(self._initial_universe.constants),
             wall_clock_seconds=time.monotonic() - start_wall,
         )
@@ -450,7 +435,7 @@ class Controller:
             step_index=step_index,
         )
         messages = [{"role": "user", "content": prompt}]
-        rewrite = _consume_first_paragraph(self._llm.stream_reasoning(messages, seed=seed))
+        rewrite = _consume_first_answer_step(self._llm.stream_reasoning(messages, seed=seed))
         return rewrite or rejected_step
 
 
@@ -490,17 +475,24 @@ def _noop_emit(_event: ControllerEvent) -> None:
     return None
 
 
-def _consume_first_paragraph(stream: Iterator[StreamChunk]) -> str:
-    """Pull from a stream until ``\\n\\n`` appears in the thinking buffer."""
-    buf = ""
+def _consume_first_answer_step(stream: Iterator[StreamChunk]) -> str:
+    """Drain a rewrite stream and return its first answer-phase reasoning step.
+
+    The rewrite sub-call asks the LLM for a single corrected sentence.
+    We collect the entire answer phase, then run it through
+    :func:`extract_answer_steps`. If that finds at least one numbered
+    step, return the first one. Otherwise fall back to the raw answer
+    text (the model may have emitted a freeform sentence with no
+    numbering).
+    """
+    answer_buf = ""
     for chunk in stream:
-        if chunk.phase != "thinking":
-            continue
-        buf += chunk.text
-        if "\n\n" in buf:
-            paragraph, _ = buf.split("\n\n", 1)
-            return paragraph.strip()
-    return buf.strip()
+        if chunk.phase == "answer":
+            answer_buf += chunk.text
+    steps = extract_answer_steps(answer_buf)
+    if steps:
+        return steps[0]
+    return answer_buf.strip()
 
 
 def _default_llm() -> LLMBackend:

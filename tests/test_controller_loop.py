@@ -69,11 +69,18 @@ class StubVerifier:
 
 
 def _thinking_scene(*paragraphs: str, answer: str | None = None) -> list[StreamChunk]:
-    """Build a single LLM scene from a list of thinking paragraphs and an answer."""
+    """Build a single LLM scene where reasoning ``paragraphs`` become
+    numbered answer-phase steps (Phase 6.7 verifies the answer phase).
+
+    A short thinking-phase marker is also emitted so the scene exercises
+    both phases. ``answer`` if provided is appended after the numbered
+    list as the model's free-form final answer text.
+    """
     chunks: list[StreamChunk] = []
-    body = "\n\n".join(paragraphs)
-    if body:
-        chunks.append(StreamChunk(text=body + "\n\n", phase="thinking"))
+    if paragraphs:
+        chunks.append(StreamChunk(text="(reasoning)", phase="thinking"))
+        body = "\n".join(f"{i + 1}. {p}" for i, p in enumerate(paragraphs))
+        chunks.append(StreamChunk(text=body + "\n", phase="answer"))
     if answer is not None:
         chunks.append(StreamChunk(text=answer, phase="answer"))
     return chunks
@@ -110,7 +117,10 @@ def test_happy_path_all_steps_verify() -> None:
         max_retries_per_step=3,
     )
 
-    assert result.final_answer == "Yes, Tom has fur."
+    # final_answer is the raw answer-phase buffer; it contains the
+    # numbered reasoning steps emitted by the LLM plus the trailing
+    # final-answer text.
+    assert "Yes, Tom has fur." in result.final_answer
     assert len(result.committed_steps) == 3
     assert len(result.rejected_steps) == 0
     assert len(result.gave_up_steps) == 0
@@ -156,7 +166,7 @@ def test_one_contradiction_fixed_on_retry_one() -> None:
         problem="?", llm=llm, verify_fn=verifier, max_retries_per_step=3
     )
 
-    assert result.final_answer == "ans"
+    assert "ans" in result.final_answer
     assert result.committed_steps == ("Step 1: Most birds can fly.",)
     assert len(result.rejected_steps) == 1
     rec = result.rejected_steps[0]
@@ -966,6 +976,125 @@ def test_pre_pass_caches_successful_translations_for_premise_reuse() -> None:
         f"expected 'Tom is a cat' to be translated only once via the pre-pass cache; "
         f"saw {pre_pass_count} calls in {translator.calls}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Answer-phase verification (Phase 6.7)
+# ---------------------------------------------------------------------------
+
+
+def test_controller_extracts_steps_from_answer_phase() -> None:
+    """A 3-step numbered answer triggers exactly 3 verifier calls."""
+    scene = [
+        StreamChunk(text="(reasoning)", phase="thinking"),
+        StreamChunk(
+            text=("1. All cats have fur.\n2. Tom is a cat.\n3. Therefore Tom has fur.\n"),
+            phase="answer",
+        ),
+        StreamChunk(text="\nYes.", phase="answer"),
+    ]
+    llm = StubGemmaBackend(scripts=[scene])
+    verifier = StubVerifier(
+        [
+            _make_result(contradiction=False),
+            _make_result(contradiction=False),
+            _make_result(contradiction=False),
+        ]
+    )
+    result = reason_with_verification(
+        problem="?", llm=llm, verify_fn=verifier, max_retries_per_step=0
+    )
+    assert result.total_answer_steps_extracted == 3
+    assert result.total_verifications == 3
+    assert result.committed_steps == (
+        "All cats have fur.",
+        "Tom is a cat.",
+        "Therefore Tom has fur.",
+    )
+
+
+def test_controller_handles_empty_answer_phase() -> None:
+    """No answer-phase content → no verifier calls, empty final answer."""
+    scene = [StreamChunk(text="(thinking only)", phase="thinking")]
+    llm = StubGemmaBackend(scripts=[scene])
+    verifier = StubVerifier([])
+    result = reason_with_verification(
+        problem="?", llm=llm, verify_fn=verifier, max_retries_per_step=0
+    )
+    assert result.total_answer_steps_extracted == 0
+    assert result.total_verifications == 0
+    assert result.final_answer == ""
+
+
+def test_controller_freeform_answer_no_numbered_steps() -> None:
+    """A freeform answer with no numbered structure → 0 extracted steps,
+    final answer preserved verbatim, no verifier calls."""
+    scene = [
+        StreamChunk(text="(thinking)", phase="thinking"),
+        StreamChunk(text="Yes, Tom has fur.", phase="answer"),
+    ]
+    llm = StubGemmaBackend(scripts=[scene])
+    verifier = StubVerifier([])
+    result = reason_with_verification(
+        problem="?", llm=llm, verify_fn=verifier, max_retries_per_step=0
+    )
+    assert result.total_answer_steps_extracted == 0
+    assert result.total_verifications == 0
+    assert result.final_answer == "Yes, Tom has fur."
+
+
+def test_controller_retry_loop_works_on_extracted_step() -> None:
+    """Step 2 is rejected on the first attempt and accepted on retry;
+    the rewrite scene comes from the second LLM scene."""
+    main_scene = [
+        StreamChunk(text="(reasoning)", phase="thinking"),
+        StreamChunk(
+            text=("1. First step.\n2. Bad second step.\n3. Third step.\n"),
+            phase="answer",
+        ),
+        StreamChunk(text="\nDone.", phase="answer"),
+    ]
+    rewrite_scene = [
+        StreamChunk(text="(thinking about rewrite)", phase="thinking"),
+        StreamChunk(text="1. Fixed second step.\n", phase="answer"),
+    ]
+    llm = StubGemmaBackend(scripts=[main_scene, rewrite_scene])
+    verifier = StubVerifier(
+        [
+            _make_result(contradiction=False),  # step 1 ok
+            _make_result(contradiction=True),  # step 2 rejected
+            _make_result(contradiction=False),  # step 2 retry ok
+            _make_result(contradiction=False),  # step 3 ok
+        ]
+    )
+    result = reason_with_verification(
+        problem="?", llm=llm, verify_fn=verifier, max_retries_per_step=2
+    )
+    assert result.total_answer_steps_extracted == 3
+    assert result.total_verifications == 4
+    assert result.total_contradictions_found == 1
+    assert result.committed_steps == (
+        "First step.",
+        "Fixed second step.",
+        "Third step.",
+    )
+    assert len(result.rejected_steps) == 1
+    assert result.rejected_steps[0].fixed_at_attempt == 1
+    assert result.rejected_steps[0].final_accepted_rewrite == "Fixed second step."
+
+
+def test_controller_total_answer_steps_extracted_field_populated() -> None:
+    """The new ControllerResult field tracks the count for benchmarks."""
+    scene = [
+        StreamChunk(text="(reasoning)", phase="thinking"),
+        StreamChunk(text="1. Alpha.\n2. Beta.\n3. Gamma.\n4. Delta.\n", phase="answer"),
+    ]
+    llm = StubGemmaBackend(scripts=[scene])
+    verifier = StubVerifier([_make_result(contradiction=False) for _ in range(4)])
+    result = reason_with_verification(
+        problem="?", llm=llm, verify_fn=verifier, max_retries_per_step=0
+    )
+    assert result.total_answer_steps_extracted == 4
 
 
 def test_importing_qverify_controller_does_not_load_transformers() -> None:

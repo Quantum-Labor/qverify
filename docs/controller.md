@@ -1,6 +1,8 @@
 # Controller
 
-The controller is the central feature of QVerify. It streams a thinking-mode LLM (Gemma 4 E4B by default), intercepts every completed reasoning step on a paragraph boundary, runs the existing Translator + Verifier pipeline against the running premise list, and — when Grover's search produces a counter-model — injects a focused correction prompt back into the LLM and asks for a rewrite. Each step is committed to the premise list only after it survives verification.
+The controller is the central feature of QVerify. It streams a thinking-mode LLM (Gemma 4 E4B by default), captures the *thinking* phase for UI display only, then extracts numbered declarative reasoning steps from the *answer* phase — the pattern Gemma 4 uses for its actual conclusions. Each extracted step runs through the existing Translator + Verifier pipeline against the running premise list, and — when Grover's search produces a counter-model — the controller injects a focused correction prompt back into the LLM and asks for a single-sentence rewrite. Each step is committed to the premise list only after it survives verification.
+
+Why answer-phase, not thinking-phase? Gemma 4's thinking phase is freeform meta-commentary ("Let me analyze the premises…", multi-sentence markdown paragraphs); splitting it on `\n\n` produced "steps" the translator's single-sentence contract correctly refused. The answer phase carries the structured numbered reasoning (`1. ... 2. ... 3. ...`) — the right granularity for verification. See [`extract_answer_steps`](../qverify/controller/utils.py).
 
 ## The loop
 
@@ -134,3 +136,4 @@ The IBM backend is intentionally **not** the inner-loop default — IBM Quantum 
 - Multi-turn conversations are not supported — a single `reason_with_verification` call is one user turn.
 - The controller's premise-CNF cache is per-instance; long sessions that would benefit from a persistent cache are out of scope for this phase.
 - Streaming the `ControllerEvent` stream over SSE / WebSocket is Phase 7 (Gradio) territory; today the only sink is the `emit` callback.
+- `extract_answer_steps` keeps only the **first line** of each numbered point; multi-line continuations (a step that wraps onto a second physical line) are dropped past the first line. Phase 7+ may extend the regex if benchmarks need multi-line support.
