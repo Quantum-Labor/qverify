@@ -16,6 +16,27 @@ is recorded and reproducible: see [Hardware run](#hardware-run).
 
 ![Architecture diagram](assets/architecture.svg)
 
+## Why this exists
+
+Large language models in 2026 can produce fluent, step-by-step reasoning,
+but there is no standard mechanism to check whether each step is logically
+consistent with the steps before it. A model might assert "Tom has fur"
+before ever establishing that Tom is a cat. The error is syntactically
+invisible, semantically material, and not caught by any output-layer filter.
+
+QVerify adds a formal consistency check after each reasoning step. The check
+is automated (no human reads each step) and grounded in satisfiability theory
+(NP-complete in the general case). The quantum component — Grover's search —
+provides a quadratic speedup over classical brute-force SAT for the sizes that
+matter in practice when verifying single reasoning steps against a growing set
+of premises.
+
+The current scope is small and honest: short chains of first-order premises
+with a handful of constants, on a simulator or on a single IBM device. The
+architecture is designed so that the `verify()` interface does not change as
+the backend scales from simulator to 156-qubit hardware to future larger
+processors.
+
 ## What works in v0.1
 
 - Translation: natural-language premises and conclusions to first-order CNF using
@@ -112,6 +133,36 @@ To reproduce on your own IBM Quantum account, populate `.env` with
 .venv/bin/pytest tests/test_verifier_ibm_smoke.py -v -m slow -s
 ```
 
+## Performance characteristics
+
+These are observed numbers from the v0.1 development cycle, not benchmarks.
+They are provided so the reader can calibrate expectations, not as claims.
+
+| Scenario | Backend | Wall-clock | Notes |
+| --- | --- | --- | --- |
+| 2-variable CNF, 1 Grover iteration | PennyLane simulator | < 10 ms | Statevector simulation |
+| 6-variable CNF, 6 Grover iterations | PennyLane simulator | ~50 ms | Typical step in a 4-premise chain |
+| 10-variable CNF, 8 Grover iterations | PennyLane simulator | ~300 ms | Near practical limit for the simulator |
+| 3-variable CNF, 2 Grover iterations | IBM Heron r2 (ibm_fez) | ~6 s quantum runtime, ~54 s wall-clock | Queue + transpile + run + fetch |
+
+The simulator path scales poorly past ~12 variables because statevector
+simulation requires 2^n complex amplitudes. At 12 variables that is 4,096
+amplitudes; at 20 it is 1,048,576. For the current use case — verifying
+individual reasoning steps against 3-8 premises over a handful of constants —
+the grounded CNF typically has 4-10 variables, which the simulator handles in
+milliseconds.
+
+The IBM hardware path is bottlenecked almost entirely by queue time on the
+free tier. The circuit itself ran in approximately 6 seconds on Heron r2; the
+remaining 48 seconds were queue, transpilation, and result fetch. Free-tier
+accounts share roughly 10 minutes of quantum time per month across all users
+on the Open Plan.
+
+Classical SAT solvers (e.g. MiniSAT) solve these instances in microseconds.
+The quantum path is slower on today's hardware and at these problem sizes.
+The `verify()` interface is designed so that as hardware scales, the client
+code does not change.
+
 ## Architecture
 
 QVerify has four components, each in its own module:
@@ -124,6 +175,42 @@ QVerify has four components, each in its own module:
 | `qverify.controller` | Orchestrates the full pipeline. Translates the problem statement to seed the initial universe, then for each reasoning step runs translate -> ground -> verify -> commit-or-retry. |
 
 For a deeper walk-through, see [docs/architecture.md](docs/architecture.md).
+
+## Design decisions
+
+**Consistency checking instead of entailment.** The verifier runs in
+consistency mode by default: it checks that `premises ∧ step` is satisfiable.
+A satisfying assignment means the step is consistent with everything established
+so far; UNSAT means the step contradicts a premise. This is cheaper to compute
+than full entailment (`premises ∧ ¬step` UNSAT) and catches the failure mode
+that matters most in practice — a step that contradicts what the model already
+said.
+
+**First-order input, propositional execution.** The translator and grounder
+together handle the first-order layer; Grover's circuit sees only propositional
+CNF. This keeps the quantum component simple and means all circuit logic (qubit
+count, oracle construction, iteration count) is determined at grounding time
+from the variable count, not from the predicate structure.
+
+**Grammar-constrained generation for translation.** The translator uses
+outlines to force Gemma 4 E4B to emit well-formed first-order logic JSON on
+every call. Without constrained generation, 4B-parameter models frequently
+emit malformed outputs or substitute constants where free variables are needed.
+With it, the translation step is reliable enough to be unattended inside the
+controller loop.
+
+**Stateless verify() interface.** The `verify()` function takes a CNF and
+returns a `VerificationResult`. It has no internal state, no threading, and
+no side effects beyond calling the backend. This makes it straightforward to
+swap backends (PennyLane simulator for development, IBM hardware for validation)
+and to test each layer independently.
+
+**Retry on contradiction.** When the verifier finds that a step contradicts
+established premises, the controller formats the counter-model (or a generic
+"contradicts established premises" message in consistency mode) as a prompt
+and asks the model to rewrite the step. The retry count is bounded. If the
+model cannot produce a consistent step, the pipeline reports the failure rather
+than silently committing an inconsistent step.
 
 ## Why Gemma 4
 
@@ -169,16 +256,32 @@ scripts/           # one-off diagnostics (gitignored)
 
 ## Roadmap
 
-- v0.2: free-form natural-language reasoning. Translator gains a
-  `translate_text(text)` method that splits multi-sentence input into single
-  statements, translates each, and merges entities.
-- v0.2: existential quantifier (`∃x`) support via Skolemization.
-- v0.3: ProofWriter and FOLIO benchmarks. Comparison of vanilla Gemma 4 vs.
-  Gemma 4 + QVerify on logical reasoning accuracy.
-- v0.3: smarter grounding (only ground variables that co-occur with their
-  predicates' constants) for larger universes.
-- v0.4: Cirq backend for Google quantum simulators alongside PennyLane and
-  Qiskit.
+**v0.2 (next release)**
+
+- Free-form natural-language reasoning. Translator gains a `translate_text(text)`
+  method that splits multi-sentence input into single statements, translates each,
+  and merges entities. This unblocks the thinking-mode failure case documented in
+  "What does not work in v0.1".
+- Existential quantifier (`∃x`) support via Skolemization. The translator currently
+  emits an empty CNF with a warning for existential statements; Skolemization
+  replaces them with fresh Skolem constants before grounding.
+
+**v0.3**
+
+- ProofWriter and FOLIO benchmarks. Structured evaluation of vanilla Gemma 4 vs.
+  Gemma 4 + QVerify on logical reasoning accuracy, to measure whether the
+  verification loop materially reduces step-level errors on standard datasets.
+- Smarter grounding. The current grounder expands all free variables over all
+  constants (Cartesian product). For predicates with arity 2 and 10 constants
+  this produces 100 ground atoms. A predicate-aware grounder would restrict
+  each variable to the constants that appear with it in the premises, reducing
+  the clause count substantially for large universes.
+
+**v0.4**
+
+- Cirq backend for Google quantum simulators alongside PennyLane and Qiskit.
+  The `verify()` interface already abstracts the backend; adding Cirq is
+  primarily a circuit translation task.
 
 ## Acknowledgments
 
