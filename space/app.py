@@ -416,7 +416,7 @@ def verify_on_ibm(label: str, mode: str) -> dict[str, Any]:
         "seconds_elapsed": elapsed,
         "message": (
             f"Job {job_id} submitted to {backend_name}. "
-            "Use 'Recover a previous job' panel below with this Job ID to check status."
+            "View status at https://quantum.cloud.ibm.com/workloads"
         ),
     }
 
@@ -607,13 +607,9 @@ with gr.Blocks(title="QVerify") as demo:
                 )
             gr.Markdown(_ibm_status_md)
             gr.Markdown(
-                "On HuggingFace's free tier (CPU Basic), the live progress "
-                "stream may disconnect during long IBM jobs (typically 1-3 "
-                "minutes). The job continues executing on IBM hardware "
-                "regardless. If the Result panel clears before completion, "
-                "copy the Job ID shown initially and use the "
-                '"Recover a previous job" panel below. '
-                "All executions are verifiable at "
+                "Submission returns a Job ID immediately. The circuit then "
+                "runs on IBM hardware (typically 1-3 minutes for queue + "
+                "execution). Track live status and retrieve results at "
                 "[IBM Quantum Workloads](https://quantum.cloud.ibm.com/workloads)."
             )
 
@@ -638,22 +634,14 @@ with gr.Blocks(title="QVerify") as demo:
     )
 
     gr.Markdown("---")
-    gr.Markdown("### 4. Recover a previous job (fallback)")
+    gr.Markdown("---")
     gr.Markdown(
-        "If the live progress stream above disconnects (HF Spaces "
-        "free-tier WebSockets sometimes drop on long-running tasks), "
-        "copy the Job ID from the JSON output and check status here."
+        "### IBM Hardware Jobs\n\n"
+        "Job execution happens on IBM Quantum hardware. After clicking "
+        "**Verify on IBM Heron r2**, copy the Job ID from the Result and "
+        "view live status at the [IBM Quantum Workloads dashboard](https://quantum.cloud.ibm.com/workloads). "
+        "All jobs are publicly verifiable there."
     )
-    with gr.Row():
-        job_id_input = gr.Textbox(
-            label="IBM Job ID",
-            placeholder="czxxx...",
-            info="From a previous submission's JSON output",
-        )
-        btn_check = gr.Button("Check status by Job ID")
-    status_output = gr.JSON(label="Job status")
-    btn_check.click(check_job_status, inputs=[job_id_input], outputs=status_output)
-
     gr.Markdown("---")
     gr.Markdown(
         "### About\n\n"
@@ -672,11 +660,11 @@ with gr.Blocks(title="QVerify") as demo:
         "**IBM hardware runs are submitted via your IBM Quantum "
         "free-tier account** (Open Plan, approximately 10 minutes of "
         "quantum time per month, shared across users). The Space "
-        "orchestrates the call; the actual circuit executes on "
-        "`ibm_fez` (Heron r2, 156 qubits) via IBM Cloud. Live polling "
-        f"updates the UI every {POLL_INTERVAL_SECONDS} s; if the "
-        "connection drops, use the fallback panel above with the Job "
-        "ID. Previously verified hardware runs are documented "
+        "orchestrates the call; the actual circuit executes on a "
+        "least-busy IBM Heron r2 backend (156 qubits, e.g. `ibm_kingston` "
+        "or `ibm_fez`) via IBM Cloud. The submission returns immediately "
+        "with a Job ID; results are retrieved at the IBM Quantum Workloads "
+        "dashboard. Previously verified hardware runs are documented "
         "[here](https://github.com/Quantum-Labor/qverify#hardware-run)."
     )
 
