@@ -27,7 +27,6 @@ from __future__ import annotations
 import os
 import time
 from collections import Counter
-from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any, cast
 from typing import Literal as _Literal
@@ -384,145 +383,71 @@ def _final_payload(
     }
 
 
-def verify_on_ibm(label: str, mode: str) -> Iterator[dict[str, Any]]:
-    """Submit the example to IBM and yield progressive status updates.
-
-    First yield: ``status="submitted"`` with the IBM job_id and dashboard
-    URL. Subsequent yields: ``status="in_progress"`` with the IBM-reported
-    status and elapsed seconds. Final yield: ``status="completed"`` with
-    the full verification result, or ``status="timeout"`` if the live
-    poll loop exceeded :data:`LIVE_POLL_TIMEOUT_SECONDS`, or
-    ``status="error"`` if something went wrong.
-    """
+def verify_on_ibm(label: str, mode: str) -> dict[str, Any]:
+    """Submit job to IBM, return Job ID immediately (no polling)."""
     if label not in EXAMPLES:
-        yield {"status": "error", "error": f"unknown example: {label}"}
-        return
+        return {"status": "error", "error": f"unknown example: {label}"}
+
     try:
         narrow_mode = _coerce_mode(mode)
     except ValueError as exc:
-        yield {"status": "error", "error": str(exc)}
-        return
+        return {"status": "error", "error": str(exc)}
 
     if not IBM_AVAILABLE:
-        yield {
+        return {
             "status": "error",
-            "error": (
-                "IBM_QUANTUM_TOKEN and/or IBM_QUANTUM_INSTANCE are not set "
-                "in this Space's Secrets. The IBM hardware path is "
-                "unavailable; use the simulator button."
-            ),
+            "error": "IBM credentials not configured in Space Secrets.",
         }
-        return
 
     start = time.monotonic()
     try:
-        job, job_id, backend_name, prepared = _prepare_and_submit(label)
+        _job, job_id, backend_name, _prepared = _prepare_and_submit(label)
     except Exception as exc:
-        yield {
-            "status": "error",
-            "error": f"{type(exc).__name__}: {exc}",
-        }
-        return
+        return {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
 
-    yield {
+    elapsed = int(time.monotonic() - start)
+    return {
         "status": "submitted",
         "ibm_job_id": job_id,
         "ibm_job_url": IBM_CONSOLE_BASE + job_id,
-        "ibm_status": "QUEUED",
-        "seconds_elapsed": int(time.monotonic() - start),
         "backend": backend_name,
         "example": label,
         "mode": narrow_mode,
+        "seconds_elapsed": elapsed,
         "message": (
-            "Job submitted. Polling every "
-            f"{POLL_INTERVAL_SECONDS} s for up to "
-            f"{LIVE_POLL_TIMEOUT_SECONDS // 60} minutes. If your browser "
-            "loses the live stream before the job finishes, copy the "
-            "Job ID from this output and use the 'Recover a previous "
-            "job' panel below."
+            f"Job {job_id} submitted to {backend_name}. "
+            "Use 'Recover a previous job' panel below with this Job ID to check status."
         ),
     }
 
-    while True:
-        elapsed = int(time.monotonic() - start)
-        if elapsed > LIVE_POLL_TIMEOUT_SECONDS:
-            yield {
-                "status": "timeout",
-                "ibm_job_id": job_id,
-                "ibm_job_url": IBM_CONSOLE_BASE + job_id,
-                "seconds_elapsed": elapsed,
-                "message": (
-                    "Live wait exceeded "
-                    f"{LIVE_POLL_TIMEOUT_SECONDS} s without the job "
-                    "completing. The job is still running on IBM. Use "
-                    "the 'Recover a previous job' panel below with this "
-                    "Job ID once it finishes (typical wall-clock 2-20 "
-                    "minutes for free-tier queue + run)."
-                ),
-            }
-            return
 
-        time.sleep(POLL_INTERVAL_SECONDS)
+def _lookup_job(service: Any, job_id: str) -> Any:
+    """Find an IBM job by ID, with retry + jobs-list fallback for fresh jobs.
 
+    IBM's runtime API sometimes has a propagation delay: a job created seconds
+    ago may not yet be findable via service.job(id) even though it appears in
+    the dashboard. Strategy: try direct lookup up to 3 times with exponential
+    backoff, then scan the 50 most recent jobs as a fallback.
+    """
+    delay = 2
+    last_exc: Exception | None = None
+    for _ in range(3):
         try:
-            ibm_status = str(job.status())
+            return service.job(job_id)
         except Exception as exc:
-            yield {
-                "status": "error",
-                "ibm_job_id": job_id,
-                "ibm_job_url": IBM_CONSOLE_BASE + job_id,
-                "seconds_elapsed": int(time.monotonic() - start),
-                "error": f"polling failed: {type(exc).__name__}: {exc}",
-            }
-            return
+            last_exc = exc
+            time.sleep(delay)
+            delay *= 2
 
-        if ibm_status not in IBM_TERMINAL_STATUSES:
-            yield {
-                "status": "in_progress",
-                "ibm_job_id": job_id,
-                "ibm_job_url": IBM_CONSOLE_BASE + job_id,
-                "ibm_status": ibm_status,
-                "seconds_elapsed": int(time.monotonic() - start),
-            }
-            continue
+    # Fallback: scan recent jobs list
+    try:
+        for j in service.jobs(limit=50):
+            if str(j.job_id()) == job_id:
+                return j
+    except Exception:
+        pass  # if list scan also fails, surface the original direct-lookup error
 
-        if ibm_status != "DONE":
-            yield {
-                "status": "error",
-                "ibm_job_id": job_id,
-                "ibm_job_url": IBM_CONSOLE_BASE + job_id,
-                "ibm_status": ibm_status,
-                "seconds_elapsed": int(time.monotonic() - start),
-                "error": f"IBM job ended with status {ibm_status}",
-            }
-            return
-
-        try:
-            result_obj = job.result()
-            pub_result = result_obj[0]
-            raw_counts = pub_result.data.meas.get_counts()
-        except Exception as exc:
-            yield {
-                "status": "error",
-                "ibm_job_id": job_id,
-                "ibm_job_url": IBM_CONSOLE_BASE + job_id,
-                "seconds_elapsed": int(time.monotonic() - start),
-                "error": f"result fetch failed: {type(exc).__name__}: {exc}",
-            }
-            return
-
-        counts = _decode_counts(raw_counts)
-        verification = _build_verification_result(counts, prepared, backend_name, narrow_mode)
-        wall = round(time.monotonic() - start, 1)
-        yield _final_payload(
-            label, narrow_mode, job_id, backend_name, verification, wall, ibm_status, int(wall)
-        )
-        return
-
-
-# --------------------------------------------------------------------------
-# Manual recovery path - look up a previous job by ID
-# --------------------------------------------------------------------------
+    raise last_exc  # type: ignore[misc]
 
 
 def check_job_status(job_id: str) -> dict[str, Any]:
@@ -542,7 +467,7 @@ def check_job_status(job_id: str) -> dict[str, Any]:
     try:
         client = _build_runtime_client()
         service = client.get_service()
-        job = service.job(job_id)
+        job = _lookup_job(service, job_id)
     except Exception as exc:
         return {"error": f"failed to look up job {job_id!r}: {type(exc).__name__}: {exc}"}
 
@@ -681,6 +606,16 @@ with gr.Blocks(title="QVerify") as demo:
                     interactive=IBM_AVAILABLE,
                 )
             gr.Markdown(_ibm_status_md)
+            gr.Markdown(
+                "On HuggingFace's free tier (CPU Basic), the live progress "
+                "stream may disconnect during long IBM jobs (typically 1-3 "
+                "minutes). The job continues executing on IBM hardware "
+                "regardless. If the Result panel clears before completion, "
+                "copy the Job ID shown initially and use the "
+                '"Recover a previous job" panel below. '
+                "All executions are verifiable at "
+                "[IBM Quantum Workloads](https://quantum.cloud.ibm.com/workloads)."
+            )
 
         with gr.Column(scale=1):
             gr.Markdown("### Result")
