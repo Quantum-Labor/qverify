@@ -431,8 +431,8 @@ def test_controller_merges_universes_from_multiple_translator_calls(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """The controller must take the union of every translator result's
-    universe before grounding; constants from premise A and premise B must
-    both be available when grounding the negated step."""
+    universe before grounding; constants from the step itself must be
+    available when grounding."""
     from qverify.controller import controller as controller_module
     from qverify.translator.cnf import CNF
     from qverify.translator.types import TranslationResult
@@ -462,8 +462,10 @@ def test_controller_merges_universes_from_multiple_translator_calls(
                 cnf=cnf_for("Cat", "Whiskers"),
                 universe=Universe(constants=("Whiskers",)),
             ),
-            "It is not the case that Whiskers is a mammal.": TranslationResult(
-                cnf=cnf_for("Mammal", "Whiskers", neg=True),
+            # Phase 6.8: controller now translates the step text directly
+            # (no "It is not the case that ..." prefix).
+            "Whiskers is a mammal.": TranslationResult(
+                cnf=cnf_for("Mammal", "Whiskers"),
                 universe=Universe(constants=("Whiskers",)),
             ),
         }
@@ -479,8 +481,8 @@ def test_controller_merges_universes_from_multiple_translator_calls(
     )
 
     # The premise list at the time of verify() was empty (this is the FIRST
-    # step) so only the negated step's universe contributes here. Re-run
-    # with a pre-committed premise to exercise the merge path properly.
+    # step) so only the step's universe contributes here. Re-run with a
+    # pre-committed premise to exercise the merge path properly.
     assert len(captured_universes) == 1
     assert captured_universes[0].constants == ("Whiskers",)
 
@@ -497,7 +499,9 @@ def test_controller_passes_grounded_cnf_to_verify(
 
     captured_cnfs: list[CNF] = []
 
-    def fake_verify(cnf: CNF, backend: object = None) -> VerificationResult:
+    def fake_verify(
+        cnf: CNF, backend: object = None, mode: str = "consistency"
+    ) -> VerificationResult:
         captured_cnfs.append(cnf)
         return _make_result(contradiction=False)
 
@@ -526,7 +530,9 @@ def test_controller_passes_grounded_cnf_to_verify(
         mapping={
             "All cats have fur.": universal,
             "Tom is a cat.": tom_is_cat,
-            "It is not the case that Tom is a cat.": tom_is_cat,
+            # Pre-pass sentence: seeds the universe with Tom so the
+            # universal step's free variable can be grounded on attempt 1.
+            "Tom is a cat": tom_is_cat,
         }
     )
 
@@ -535,7 +541,7 @@ def test_controller_passes_grounded_cnf_to_verify(
     )
 
     reason_with_verification(
-        problem="?",
+        problem="Tom is a cat.",
         llm=llm,
         translator=translator,
         max_retries_per_step=0,
@@ -563,7 +569,9 @@ def test_controller_propositional_cnf_passes_through_grounding_unchanged(
 
     captured: list[CNF] = []
 
-    def fake_verify(cnf: CNF, backend: object = None) -> VerificationResult:
+    def fake_verify(
+        cnf: CNF, backend: object = None, mode: str = "consistency"
+    ) -> VerificationResult:
         captured.append(cnf)
         return _make_result(contradiction=False)
 
@@ -705,9 +713,6 @@ def test_first_step_can_use_universe_from_problem(
             "All cats have fur.": TranslationResult(
                 cnf=universal_cnf, universe=Universe(constants=())
             ),
-            "It is not the case that All cats have fur.": TranslationResult(
-                cnf=universal_cnf, universe=Universe(constants=())
-            ),
         }
     )
     llm = StubGemmaBackend(scripts=[_thinking_scene("All cats have fur.", answer="done")])
@@ -753,9 +758,6 @@ def test_initial_universe_merges_with_per_step_entities(
                 universe=Universe(constants=("Alice",)),
             ),
             "Bob is a friend.": TranslationResult(
-                cnf=bob_clause_cnf, universe=Universe(constants=("Bob",))
-            ),
-            "It is not the case that Bob is a friend.": TranslationResult(
                 cnf=bob_clause_cnf, universe=Universe(constants=("Bob",))
             ),
         }
@@ -850,11 +852,10 @@ def test_pre_pass_splits_problem_into_sentences() -> None:
         max_retries_per_step=0,
     )
 
-    pre_pass_calls = [c for c in translator.calls if not c.startswith("It is not the case that")]
-    # The pre-pass calls one per sentence (3); the per-step verification
-    # also adds the committed step "done" to translator.calls. Filter to
-    # just the pre-pass texts.
-    pre_pass_only = [c for c in pre_pass_calls if c != "done."]
+    # The pre-pass calls translate() once per sentence (3); the per-step
+    # verification also adds the committed step "done." to translator.calls.
+    # Filter out the per-step text to leave just the pre-pass calls.
+    pre_pass_only = [c for c in translator.calls if c != "done."]
     assert pre_pass_only == [
         "Premises: All cats have fur",
         "Tom is a cat",
@@ -965,13 +966,12 @@ def test_pre_pass_caches_successful_translations_for_premise_reuse() -> None:
         max_retries_per_step=0,
     )
 
-    # Pre-pass calls: "Tom is a cat", "Tom has fur" — 2 calls.
-    # Per-step processing translates "It is not the case that <step>"
-    # (uncached) plus the premise itself ("Tom is a cat", which IS in
-    # the cache from the pre-pass — should not re-translate).
+    # Pre-pass calls: "Tom is a cat", "Tom has fur" — 2 calls. Per-step
+    # processing translates the step text directly ("Tom is a cat", which
+    # IS in the cache from the pre-pass — should not re-translate) plus,
+    # for the second occurrence, the prior premise (also "Tom is a cat",
+    # cached). So no extra translator calls beyond the pre-pass.
     pre_pass_count = sum(1 for c in translator.calls if c == "Tom is a cat")
-    # Only the pre-pass call should appear; the per-step premise lookup
-    # hits the cache populated by the pre-pass.
     assert pre_pass_count == 1, (
         f"expected 'Tom is a cat' to be translated only once via the pre-pass cache; "
         f"saw {pre_pass_count} calls in {translator.calls}"
@@ -1095,6 +1095,124 @@ def test_controller_total_answer_steps_extracted_field_populated() -> None:
         problem="?", llm=llm, verify_fn=verifier, max_retries_per_step=0
     )
     assert result.total_answer_steps_extracted == 4
+
+
+# ---------------------------------------------------------------------------
+# Consistency-mode semantics (Phase 6.8)
+# ---------------------------------------------------------------------------
+
+
+def test_controller_consistency_premise_step_accepted() -> None:
+    """A premise-shaped step (one that does not have to be entailed by
+    prior premises) must be accepted under consistency-mode verification.
+
+    Under the old entailment-mode semantics, a premise re-stated as the
+    very first step would be rejected because there was nothing for it to
+    be entailed by. Consistency mode accepts any step that is not
+    inconsistent with the premises so far — empty premises pose no
+    consistency obstacle.
+    """
+    llm = StubGemmaBackend(scripts=[_thinking_scene("All cats have fur.", answer="ans")])
+    verifier = StubVerifier([_make_result(contradiction=False)])
+
+    result = reason_with_verification(
+        problem="?", llm=llm, verify_fn=verifier, max_retries_per_step=3
+    )
+    assert result.committed_steps == ("All cats have fur.",)
+    assert result.gave_up_steps == ()
+    assert result.total_contradictions_found == 0
+
+
+def test_controller_consistency_inconsistent_step_rejected() -> None:
+    """A step that the verifier flags as inconsistent (UNSAT in
+    consistency mode → contradiction_found=True with counter_model=None)
+    must be rejected and the gave-up record must carry counter_model=None.
+    """
+    llm = StubGemmaBackend(
+        scripts=[
+            _thinking_scene("Inconsistent step.", answer="ans"),
+            _thinking_scene("Rewrite still inconsistent."),
+        ]
+    )
+    # Both calls return contradiction_found=True with counter_model=None,
+    # mimicking a consistency-mode UNSAT verdict.
+    inconsistent = VerificationResult(
+        contradiction_found=True,
+        counter_model=None,
+        n_variables=1,
+        n_clauses=2,
+        n_grover_iterations=1,
+        backend_name="stub",
+        shots=4,
+    )
+    verifier = StubVerifier([inconsistent, inconsistent])
+
+    result = reason_with_verification(
+        problem="?", llm=llm, verify_fn=verifier, max_retries_per_step=1
+    )
+    assert result.committed_steps == ()
+    assert result.gave_up_steps == ("Inconsistent step.",)
+    assert len(result.rejected_steps) == 1
+    assert result.rejected_steps[0].counter_model is None
+    assert result.rejected_steps[0].fixed_at_attempt is None
+
+
+def test_controller_translates_step_directly_not_negated() -> None:
+    """The controller must translate the raw step text — never the legacy
+    'It is not the case that <step>' prefix — when building the CNF for
+    consistency-mode verification."""
+    from qverify.translator.cnf import CNF
+    from qverify.translator.types import TranslationResult
+    from qverify.verifier._universe import Universe
+
+    translator = _RecordingTranslator(
+        default_result=TranslationResult(cnf=CNF(clauses=()), universe=Universe(constants=())),
+    )
+    llm = StubGemmaBackend(scripts=[_thinking_scene("Tom is a cat.", answer="ans")])
+
+    reason_with_verification(
+        problem="A problem.",
+        llm=llm,
+        translator=translator,
+        max_retries_per_step=0,
+    )
+
+    assert "Tom is a cat." in translator.calls
+    assert not any(c.startswith("It is not the case that") for c in translator.calls), (
+        f"controller still emits negated-step translations: {translator.calls}"
+    )
+
+
+def test_controller_inference_step_accepted_when_implied_by_premises() -> None:
+    """An inference step that is logically implied by the premises is
+    consistent with them, so consistency-mode verification accepts it."""
+    llm = StubGemmaBackend(
+        scripts=[
+            _thinking_scene(
+                "All cats have fur.",
+                "Tom is a cat.",
+                "Therefore Tom has fur.",
+                answer="ans",
+            )
+        ]
+    )
+    verifier = StubVerifier(
+        [
+            _make_result(contradiction=False),
+            _make_result(contradiction=False),
+            _make_result(contradiction=False),
+        ]
+    )
+
+    result = reason_with_verification(
+        problem="?", llm=llm, verify_fn=verifier, max_retries_per_step=3
+    )
+    assert result.committed_steps == (
+        "All cats have fur.",
+        "Tom is a cat.",
+        "Therefore Tom has fur.",
+    )
+    assert result.gave_up_steps == ()
 
 
 def test_importing_qverify_controller_does_not_load_transformers() -> None:

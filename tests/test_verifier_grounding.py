@@ -286,9 +286,10 @@ def test_grounded_syllogism_runs_through_verify() -> None:
     universe = Universe(constants=("Tom", "Whiskers"))
     grounded = ground_cnf(first_order_cnf, universe)
 
-    result = verify(grounded, shots=512, seed=42)
+    result = verify(grounded, shots=512, seed=42, mode="entailment")
     # Premises ∧ ¬conclusion is unsatisfiable here, so the verifier reports
-    # "no contradiction found" — i.e. the conclusion is entailed.
+    # "no contradiction found" under entailment mode — i.e. the conclusion
+    # is entailed.
     assert result.contradiction_found is False
     assert result.counter_model is None
     # Grounding produced the expected propositional shape.

@@ -82,7 +82,7 @@ def test_pennylane_backend_seed_determinism() -> None:
 
 def test_pennylane_backend_via_run_grover_finds_satisfying_assignment() -> None:
     cnf = _cnf(_clause(_atom("P")), _clause(_atom("Q")))
-    result = run_grover(cnf, shots=512, seed=42, backend=PennyLaneBackend())
+    result = run_grover(cnf, shots=512, seed=42, backend=PennyLaneBackend(), mode="entailment")
     assert result.contradiction_found
     assert result.counter_model is not None
     assert result.counter_model.assignment == {"P": True, "Q": True}
@@ -291,7 +291,7 @@ def test_ibm_backend_through_run_grover_picks_top_satisfying_bitstring() -> None
     )
     backend = IBMQuantumBackend(client=stub)
     cnf = _cnf(_clause(_atom("P")), _clause(_atom("Q")))
-    result = run_grover(cnf, shots=1024, seed=42, backend=backend)
+    result = run_grover(cnf, shots=1024, seed=42, backend=backend, mode="entailment")
     assert result.contradiction_found is True
     assert result.counter_model is not None
     assert result.counter_model.assignment == {"P": True, "Q": True}
@@ -302,7 +302,7 @@ def test_ibm_backend_through_run_grover_unsat_when_no_measured_satisfier() -> No
     stub = _StubIBMClient(counts={"00": 600, "01": 200, "10": 200})
     backend = IBMQuantumBackend(client=stub)
     cnf = _cnf(_clause(_atom("P")), _clause(_atom("Q")))
-    result = run_grover(cnf, shots=1000, seed=42, backend=backend)
+    result = run_grover(cnf, shots=1000, seed=42, backend=backend, mode="entailment")
     assert result.contradiction_found is False
     assert result.counter_model is None
 

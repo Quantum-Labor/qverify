@@ -47,8 +47,11 @@ class VerificationResult(BaseModel):
 
     @model_validator(mode="after")
     def _check_consistency(self) -> VerificationResult:
-        if self.contradiction_found and self.counter_model is None:
-            raise ValueError("contradiction_found=True requires a counter_model")
+        # Phase 6.8: consistency-mode rejections legitimately have no
+        # counter_model (UNSAT means there isn't an assignment to display).
+        # Only enforce that ``contradiction_found=False`` never carries a
+        # spurious counter_model — a satisfying assignment is meaningful
+        # only when we're treating it as a counter-example.
         if not self.contradiction_found and self.counter_model is not None:
             raise ValueError("contradiction_found=False forbids a counter_model")
         return self

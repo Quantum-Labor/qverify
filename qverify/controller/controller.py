@@ -31,7 +31,7 @@ from qverify.verifier import verify as default_verify
 from qverify.verifier._universe import Universe
 from qverify.verifier.backends import Backend
 from qverify.verifier.grounding import ground_cnf
-from qverify.verifier.types import VerificationResult
+from qverify.verifier.types import CounterModel, VerificationResult
 
 
 class _TranslatorLike(Protocol):
@@ -105,7 +105,7 @@ class Controller:
         self._premise_translation_cache: dict[str, TranslationResult] = {}
         self._total_groundings: int = 0
         # Pre-pass state — populated by reason() at the start of each run,
-        # cleared between runs. Empty defaults so _build_consistency_cnf
+        # cleared between runs. Empty defaults so _build_step_consistency_cnf
         # works unchanged when verify_fn bypasses the pre-pass.
         self._initial_universe: Universe = Universe(constants=())
         self._initial_premise_cnf: CNF = CNF(clauses=())
@@ -307,7 +307,11 @@ class Controller:
                     contradictions=contradictions,
                 )
 
-            assert result.counter_model is not None
+            # Phase 6.8: consistency-mode rejections legitimately have no
+            # counter_model (UNSAT means there isn't a satisfying
+            # assignment to display). The first/last counter_model
+            # tracking still records whatever's there — None or a
+            # witness — so downstream events stay consistent.
             contradictions += 1
             last_counter_model = result.counter_model
             if first_counter_model is None:
@@ -364,28 +368,34 @@ class Controller:
             return self._verify_fn(step, list(premises))
 
         translator = self._translator if self._translator is not None else _default_translator()
-        cnf = self._build_consistency_cnf(premises=premises, step=step, translator=translator)
-        return default_verify(cnf, backend=self._verifier_backend)
+        cnf = self._build_step_consistency_cnf(premises=premises, step=step, translator=translator)
+        return default_verify(cnf, backend=self._verifier_backend, mode="consistency")
 
-    def _build_consistency_cnf(
+    def _build_step_consistency_cnf(
         self,
         *,
         premises: list[str],
         step: str,
         translator: _TranslatorLike,
     ) -> CNF:
-        """Translate every premise plus the negated step, merge the universes,
+        """Translate every premise plus the step itself, merge the universes,
         and ground the combined first-order CNF before returning it.
 
-        The verifier still sees only propositional CNF — grounding happens
-        here, in the controller, against the union of constants declared by
-        every translator call in this run.
+        Phase 6.8 framing: the verifier checks ``premises ∧ step`` for
+        satisfiability — SAT means the step is consistent with the
+        premises (acceptable), UNSAT means it contradicts them. We
+        translate the step directly (no ``It is not the case that …``
+        prefix), which is also what the LLM is best at.
         """
-        # Translate the negated step first; this is always called fresh
-        # because the step text changes between attempts.
-        neg_result = translator.translate(f"It is not the case that {step}")
+        # Translate the step itself, consulting the pre-pass cache so a
+        # step that re-states a problem-statement sentence verbatim
+        # doesn't pay for a redundant translation.
+        step_result = self._premise_translation_cache.get(step)
+        if step_result is None:
+            step_result = translator.translate(step)
+            self._premise_translation_cache[step] = step_result
 
-        all_results: list[TranslationResult] = [neg_result]
+        all_results: list[TranslationResult] = [step_result]
         for premise in premises:
             cached = self._premise_translation_cache.get(premise)
             if cached is None:
@@ -394,16 +404,16 @@ class Controller:
             all_results.append(cached)
 
         # Merge universes — start with the pre-pass universe extracted
-        # from the problem statement, then union in the per-premise +
-        # negated-step constants.
+        # from the problem statement, then union in the per-premise + step
+        # constants.
         merged_constants: set[str] = set(self._initial_universe.constants)
         for r in all_results:
             merged_constants.update(r.universe.constants)
         merged_universe = Universe(constants=tuple(merged_constants))
 
         # Combine CNFs — start with the problem-statement CNF (always in
-        # scope), then concatenate the per-premise + negated-step
-        # clauses. Empty CNFs contribute nothing.
+        # scope), then concatenate the per-premise + step clauses. Empty
+        # CNFs contribute nothing.
         all_clauses: list[Clause] = list(self._initial_premise_cnf.clauses)
         for r in all_results:
             all_clauses.extend(r.cnf.clauses)
@@ -420,14 +430,11 @@ class Controller:
         self,
         *,
         rejected_step: str,
-        counter_model: object,
+        counter_model: CounterModel | None,
         premises: list[str],
         step_index: int,
         seed: int | None,
     ) -> str:
-        from qverify.verifier.types import CounterModel
-
-        assert isinstance(counter_model, CounterModel)
         prompt = format_counter_model_prompt(
             step=rejected_step,
             counter_model=counter_model,

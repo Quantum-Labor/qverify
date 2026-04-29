@@ -1,6 +1,6 @@
 # Controller
 
-The controller is the central feature of QVerify. It streams a thinking-mode LLM (Gemma 4 E4B by default), captures the *thinking* phase for UI display only, then extracts numbered declarative reasoning steps from the *answer* phase — the pattern Gemma 4 uses for its actual conclusions. Each extracted step runs through the existing Translator + Verifier pipeline against the running premise list, and — when Grover's search produces a counter-model — the controller injects a focused correction prompt back into the LLM and asks for a single-sentence rewrite. Each step is committed to the premise list only after it survives verification.
+The controller is the central feature of QVerify. It streams a thinking-mode LLM (Gemma 4 E4B by default), captures the *thinking* phase for UI display only, then extracts numbered declarative reasoning steps from the *answer* phase — the pattern Gemma 4 uses for its actual conclusions. Each extracted step runs through the existing Translator + Verifier pipeline against the running premise list, and — when Grover's search reports that the step is inconsistent with the premises (UNSAT) — the controller injects a focused correction prompt back into the LLM and asks for a single-sentence rewrite. Each step is committed to the premise list only after it survives verification.
 
 Why answer-phase, not thinking-phase? Gemma 4's thinking phase is freeform meta-commentary ("Let me analyze the premises…", multi-sentence markdown paragraphs); splitting it on `\n\n` produced "steps" the translator's single-sentence contract correctly refused. The answer phase carries the structured numbered reasoning (`1. ... 2. ... 3. ...`) — the right granularity for verification. See [`extract_answer_steps`](../qverify/controller/utils.py).
 
@@ -25,19 +25,20 @@ Why answer-phase, not thinking-phase? Gemma 4's thinking phase is freeform meta-
            │                                 ▼
            │                    ┌────────────────────────┐
            │                    │  Translator (Gemma E2B)│
-           │                    │   premise list + ¬step │
+           │                    │   premise list + step  │
            │                    └─────────┬──────────────┘
            │                              │ CNF
            │                              ▼
            │                    ┌────────────────────────┐
-           │     counter-model  │  Grover verifier       │
+           │     inconsistency  │  Grover verifier       │
            ├────────────────────│ (PennyLane simulator   │
            │                    │  by default; IBM opt-in)│
+           │                    │  mode=consistency       │
            │                    └─────────┬──────────────┘
            │                              │
            │                  ┌───────────┴────────────┐
            │                  │                        │
-           │       contradiction                  no contradiction
+           │       UNSAT (inconsistent)     SAT (consistent)
            │                  │                        │
            │                  ▼                        ▼
            │   ┌──────────────────────┐    ┌────────────────────┐
@@ -95,11 +96,21 @@ A run with one rejected step that gets fixed on the first retry adds:
 ```
 ReasoningStepStarted   (step="All birds can fly.")
 ReasoningStepVerified  (attempt=0, contradiction_found=True)
-ReasoningStepRejected  (attempt=0, counter_model={Bird=true, Flies=false})
+ReasoningStepRejected  (attempt=0, counter_model=None)
    --- mini-conversation: "this step is inconsistent because ..." ---
 ReasoningStepVerified  (attempt=1, contradiction_found=False)
 ReasoningStepCommitted (attempt=1)
 ```
+
+`counter_model` is `None` because the verifier ran in consistency mode — the rejection is an UNSAT verdict, so there is no satisfying assignment to display. Runs that pass `mode="entailment"` to the verifier directly still surface a witness assignment for SAT-as-rejection cases.
+
+## Why consistency, not entailment?
+
+The earlier (Phase 3) framing checked `premises ∧ ¬step` for satisfiability. SAT meant Grover found an assignment satisfying the premises while making the step false — a counter-example proving the step is *not entailed* by the premises. That works for inference steps but mis-fires on premise-shaped steps: the very first reasoning step is almost always a re-statement of one of the problem's givens (e.g. step 1 = "All cats have fur" on the canonical sanity input). With an empty premise pool, that step is trivially not entailed by anything yet, so entailment-mode verification would always reject step 1 as inconsistent. That's wrong: re-stating a given is not a logical error, it's the bedrock of any chain of reasoning.
+
+Consistency mode (Phase 6.8, the default) checks `premises ∧ step` for satisfiability instead. SAT means the step is *consistent* with the premises so far — accept. UNSAT means the step contradicts the premises — reject. Premise re-statements pose no consistency obstacle (the conjunction is trivially satisfiable when the premise list is empty). Inference steps that *do* follow from the premises are also consistent with them. The mode flips only when the step is a genuine contradiction, which is the case the controller actually needs to catch.
+
+The trade-off: consistency mode can't surface a witness assignment on rejection (UNSAT means there isn't one), so the rewrite prompt falls back to a generic "the step contradicts the established premises" explanation rather than the concrete `{Bird=true, Flies=false}` style breakdown entailment mode produced. Both modes share the same Grover circuit; only the interpretation of the SAT/UNSAT outcome changes — see [`VerifyMode`](../qverify/verifier/grover.py).
 
 ## Swapping backends
 

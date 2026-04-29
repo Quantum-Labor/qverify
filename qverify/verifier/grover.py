@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections import Counter
+from typing import Literal
 
 from qverify.translator.cnf import CNF
 from qverify.utils.logging import get_logger
@@ -14,6 +15,28 @@ from qverify.verifier.types import CounterModel, VerificationResult
 
 MAX_VARIABLES: int = 16
 TOP_MEASUREMENTS_KEEP: int = 5
+
+VerifyMode = Literal["entailment", "consistency"]
+"""How :func:`run_grover` interprets the satisfying-bitstring outcome.
+
+Both modes share the same Grover circuit (which always searches for a
+satisfying assignment of the supplied CNF). They differ only in what
+"contradiction" means:
+
+* ``"consistency"`` (default since Phase 6.8): the supplied CNF is
+  expected to be ``premises ∧ step``; finding a satisfying assignment
+  means the step is consistent with the premises, so
+  ``contradiction_found = False``. UNSAT means the step contradicts the
+  premises, so ``contradiction_found = True``. ``counter_model`` is
+  always ``None`` — for the consistent branch we don't surface the
+  satisfying assignment, and for the inconsistent branch there isn't
+  one.
+* ``"entailment"`` (legacy Phase 3 behaviour): the supplied CNF is
+  expected to be ``premises ∧ ¬step``; finding a satisfying assignment
+  is a counter-model showing the step is NOT entailed by the premises,
+  so ``contradiction_found = True`` and ``counter_model`` carries the
+  witness. UNSAT means the step IS entailed.
+"""
 
 _log = get_logger("qverify.verifier")
 
@@ -38,13 +61,21 @@ def run_grover(
     seed: int = 42,
     n_solutions_estimate: int = 1,
     backend: Backend | None = None,
+    mode: VerifyMode = "consistency",
 ) -> VerificationResult:
-    """Execute Grover's search on the given CNF via the supplied backend.
+    """Execute Grover's search on the given CNF and interpret per ``mode``.
 
-    Picks the most-frequent measurement bitstring and verifies classically
-    that it satisfies the CNF; only then sets ``contradiction_found=True``.
-    If no measured bitstring satisfies, falls back to UNSAT.
+    The Grover circuit is identical across modes: it searches for a
+    satisfying assignment of ``cnf``. ``mode`` decides what the outcome
+    *means*. See :data:`VerifyMode` for the full semantics of each mode.
+
+    The classical post-check (walking the most-frequent measured
+    bitstrings until one satisfies the CNF) is unchanged — Grover with
+    near-uniform amplitudes still benefits from a top-K rescan.
     """
+    if mode not in ("entailment", "consistency"):
+        raise ValueError(f"mode must be 'entailment' or 'consistency', got {mode!r}")
+
     if backend is None:
         backend = PennyLaneBackend()
 
@@ -58,11 +89,11 @@ def run_grover(
             f"{MAX_VARIABLES} (state-vector simulation cost is exponential)."
         )
 
-    # Empty CNF is trivially satisfied by the empty assignment.
+    # Empty CNF is trivially satisfied. Both modes agree: no contradiction.
     if n_qubits == 0:
         return VerificationResult(
-            contradiction_found=True,
-            counter_model=CounterModel(assignment={}),
+            contradiction_found=False,
+            counter_model=None,
             n_variables=0,
             n_clauses=n_clauses,
             n_grover_iterations=0,
@@ -80,24 +111,49 @@ def run_grover(
     top = counter.most_common(TOP_MEASUREMENTS_KEEP)
     top_measurements: tuple[tuple[str, int], ...] = tuple((bs, c) for bs, c in top)
 
-    contradiction_found = False
-    counter_model: CounterModel | None = None
+    # Walk the histogram in descending order of frequency, looking for a
+    # bitstring whose decoded assignment classically satisfies the CNF.
+    found_satisfying_assignment = False
+    satisfying_assignment: dict[str, bool] | None = None
     for bits, _count in counter.most_common():
         candidate = encoder.bitstring_to_assignment(bits)
         if satisfies(cnf, candidate):
-            contradiction_found = True
-            counter_model = CounterModel(assignment=candidate)
+            found_satisfying_assignment = True
+            satisfying_assignment = candidate
+            break
+
+    if mode == "consistency":
+        contradiction_found = not found_satisfying_assignment
+        counter_model: CounterModel | None = None
+        if contradiction_found:
             _log.info(
-                "Grover found a counter-model after %d iterations: %s",
+                "Consistency check FAILED after %d iterations: no satisfying "
+                "assignment measured (top: %s)",
+                n_iter,
+                top[0][0] if top else "<none>",
+            )
+        else:
+            _log.info(
+                "Consistency check passed after %d iterations: satisfying assignment found",
+                n_iter,
+            )
+    else:  # entailment
+        contradiction_found = found_satisfying_assignment
+        counter_model = (
+            CounterModel(assignment=satisfying_assignment)
+            if found_satisfying_assignment and satisfying_assignment is not None
+            else None
+        )
+        if found_satisfying_assignment:
+            _log.info(
+                "Entailment counter-model found after %d iterations: %s",
                 n_iter,
                 counter_model,
             )
-            break
-    else:
-        if top:
+        else:
             _log.info(
-                "No measured bitstring satisfies the CNF (top: %s); reporting UNSAT",
-                top[0][0],
+                "Entailment check passed after %d iterations: no counter-model",
+                n_iter,
             )
 
     backend_name_value = metadata.get("backend_name") or backend.name

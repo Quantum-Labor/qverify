@@ -56,10 +56,15 @@ class ReasoningStepVerified(BaseModel):
 
 
 class ReasoningStepRejected(BaseModel):
-    """Emitted when verification finds a counter-model for the current step."""
+    """Emitted when the verifier rejects the current step.
+
+    ``counter_model`` carries the witness assignment when the verifier
+    ran in entailment mode and found one; consistency-mode rejections
+    set it to ``None`` (UNSAT — there is no satisfying assignment).
+    """
 
     step: str
-    counter_model: CounterModel
+    counter_model: CounterModel | None = None
     attempt: int
     timestamp: float
 
@@ -80,7 +85,7 @@ class ReasoningStepGaveUp(BaseModel):
     """Emitted when all retries fail for a step; the step is dropped, not added to premises."""
 
     step: str
-    last_counter_model: CounterModel
+    last_counter_model: CounterModel | None = None
     attempts: int
     timestamp: float
 
@@ -110,13 +115,15 @@ class RejectedStep(BaseModel):
     """A reasoning step that was rejected at least once.
 
     Carries the original step text, the first counter-model produced by
-    Grover, the attempt index at which a successor was finally accepted
-    (``None`` if the controller gave up), and the final accepted rewrite
-    text (``None`` if the controller gave up).
+    Grover (``None`` for consistency-mode rejections — there is no
+    satisfying assignment to display), the attempt index at which a
+    successor was finally accepted (``None`` if the controller gave up),
+    and the final accepted rewrite text (``None`` if the controller
+    gave up).
     """
 
     original_step: str
-    counter_model: CounterModel
+    counter_model: CounterModel | None = None
     fixed_at_attempt: int | None = None
     final_accepted_rewrite: str | None = None
 

@@ -45,12 +45,12 @@ If the CNF has free variables but the universe is empty, `ground_cnf` raises `Gr
 
 ## How the controller uses grounding
 
-The Phase 5 [`Controller`](../qverify/controller/controller.py) calls the translator on each premise and on the negated step, getting back a [`TranslationResult`](../qverify/translator/types.py) (CNF + Universe) per call. It then:
+The Phase 5 [`Controller`](../qverify/controller/controller.py) calls the translator on each premise and on the step itself (translated as-is — no `It is not the case that …` prefix; Phase 6.8 verifies `premises ∧ step` for consistency rather than `premises ∧ ¬step` for entailment), getting back a [`TranslationResult`](../qverify/translator/types.py) (CNF + Universe) per call. It then:
 
 1. Merges the universes — union of every result's `constants`, deduplicated and sorted.
 2. Concatenates the CNF clauses across results.
 3. Calls `ground_cnf(combined, merged_universe)` to instantiate every free variable.
-4. Hands the grounded propositional CNF to `verify(...)`.
+4. Hands the grounded propositional CNF to `verify(..., mode="consistency")`.
 
 The controller seeds the universe from a one-shot translation of the problem statement before entering the reasoning loop (the Phase 6.5 pre-pass); per-step entities are merged on top.
 

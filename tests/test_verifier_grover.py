@@ -60,14 +60,14 @@ def test_verify_returns_verification_result() -> None:
 
 def test_counter_model_actually_satisfies_cnf() -> None:
     cnf = _cnf(_clause(_atom("P")), _clause(_atom("Q")))
-    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42)
+    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42, mode="entailment")
     assert result.contradiction_found
     assert result.counter_model is not None
     assert satisfies(cnf, result.counter_model.assignment)
 
 
 # ---------------------------------------------------------------------------
-# SAT cases (counter-model expected)
+# SAT cases under entailment mode (counter-model expected)
 # ---------------------------------------------------------------------------
 
 
@@ -77,7 +77,7 @@ def test_simple_sat_p_or_q_with_implication_finds_q_true() -> None:
         _clause(_atom("P"), _atom("Q")),
         _clause(_atom("P", neg=True), _atom("Q")),
     )
-    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42)
+    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42, mode="entailment")
     assert result.contradiction_found
     assert result.counter_model is not None
     assert result.counter_model.assignment["Q"] is True
@@ -90,7 +90,7 @@ def test_three_sat_unique_solution() -> None:
         _clause(_atom("Q")),
         _clause(_atom("R", neg=True)),
     )
-    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42)
+    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42, mode="entailment")
     assert result.contradiction_found
     assert result.counter_model is not None
     assert result.counter_model.assignment == {"P": True, "Q": True, "R": False}
@@ -102,7 +102,7 @@ def test_four_var_multiple_solutions_finds_a_satisfying_one() -> None:
         _clause(_atom("P"), _atom("Q")),
         _clause(_atom("R"), _atom("S")),
     )
-    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42)
+    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42, mode="entailment")
     assert result.contradiction_found
     assert result.counter_model is not None
     assert satisfies(cnf, result.counter_model.assignment)
@@ -111,20 +111,20 @@ def test_four_var_multiple_solutions_finds_a_satisfying_one() -> None:
 def test_unjustified_step_finds_counter_model() -> None:
     # Premise: P. Step (negated): Q. Premises ∧ ¬step = {P, ¬Q}. SAT with P=T, Q=F.
     cnf = _cnf(_clause(_atom("P")), _clause(_atom("Q", neg=True)))
-    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42)
+    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42, mode="entailment")
     assert result.contradiction_found
     assert result.counter_model is not None
     assert result.counter_model.assignment == {"P": True, "Q": False}
 
 
 # ---------------------------------------------------------------------------
-# UNSAT cases (no contradiction in the spec's framing — step is entailed)
+# UNSAT cases under entailment mode (no counter-model — step is entailed)
 # ---------------------------------------------------------------------------
 
 
 def test_simple_unsat_p_and_not_p() -> None:
     cnf = _cnf(_clause(_atom("P")), _clause(_atom("P", neg=True)))
-    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42)
+    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42, mode="entailment")
     assert not result.contradiction_found
     assert result.counter_model is None
 
@@ -141,7 +141,7 @@ def test_penguin_paradox_three_clause_is_unsat() -> None:
             _atom("Flies", "penguin"),
         ),
     )
-    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42)
+    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42, mode="entailment")
     assert not result.contradiction_found
     assert result.counter_model is None
     assert result.n_variables == 2
@@ -153,14 +153,25 @@ def test_penguin_paradox_three_clause_is_unsat() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_empty_cnf_trivially_sat() -> None:
+def test_empty_cnf_is_consistent() -> None:
+    # Empty CNF is trivially satisfied. Consistency-mode default reads
+    # this as "the step is consistent with the premises", so
+    # contradiction_found is False and counter_model is None.
     result = verify(CNF(clauses=()), shots=DEFAULT_SHOTS, seed=42)
-    assert result.contradiction_found
-    assert result.counter_model is not None
-    assert result.counter_model.assignment == {}
+    assert not result.contradiction_found
+    assert result.counter_model is None
     assert result.n_variables == 0
     assert result.n_clauses == 0
     assert result.n_grover_iterations == 0
+
+
+def test_empty_cnf_under_entailment_mode_is_also_consistent() -> None:
+    # Both modes agree on the empty CNF: trivially SAT means
+    # consistent / no contradiction. counter_model is left None to keep
+    # the result faithful to "no satisfying assignment was searched for".
+    result = verify(CNF(clauses=()), shots=DEFAULT_SHOTS, seed=42, mode="entailment")
+    assert not result.contradiction_found
+    assert result.counter_model is None
 
 
 def test_qubit_cap_above_max_raises() -> None:
@@ -244,17 +255,20 @@ def test_counter_model_str_renders_truth_values() -> None:
     assert str(cm) == "{P=T, Q=F}"
 
 
-def test_verification_result_invariant_contradiction_requires_counter_model() -> None:
-    with pytest.raises(ValueError, match="counter_model"):
-        VerificationResult(
-            contradiction_found=True,
-            counter_model=None,
-            n_variables=1,
-            n_clauses=1,
-            n_grover_iterations=1,
-            backend_name="x",
-            shots=1,
-        )
+def test_verification_result_consistency_rejection_allows_no_counter_model() -> None:
+    # Phase 6.8: consistency-mode rejections (UNSAT) legitimately have
+    # contradiction_found=True with counter_model=None. No exception.
+    result = VerificationResult(
+        contradiction_found=True,
+        counter_model=None,
+        n_variables=1,
+        n_clauses=1,
+        n_grover_iterations=1,
+        backend_name="x",
+        shots=1,
+    )
+    assert result.contradiction_found is True
+    assert result.counter_model is None
 
 
 def test_verification_result_invariant_no_contradiction_forbids_counter_model() -> None:
@@ -268,3 +282,49 @@ def test_verification_result_invariant_no_contradiction_forbids_counter_model() 
             backend_name="x",
             shots=1,
         )
+
+
+# ---------------------------------------------------------------------------
+# Phase 6.8: mode parameter — entailment vs consistency
+# ---------------------------------------------------------------------------
+
+
+def test_verify_default_mode_is_consistency() -> None:
+    # Satisfiable CNF: under default (consistency) mode, SAT means
+    # consistent → contradiction_found=False and no counter_model.
+    cnf = _cnf(_clause(_atom("P")))
+    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42)
+    assert result.contradiction_found is False
+    assert result.counter_model is None
+
+
+def test_verify_consistency_mode_satisfiable_cnf() -> None:
+    cnf = _cnf(_clause(_atom("P")), _clause(_atom("Q")))
+    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42, mode="consistency")
+    assert result.contradiction_found is False
+    assert result.counter_model is None
+
+
+def test_verify_consistency_mode_unsatisfiable_cnf() -> None:
+    # {P, ¬P} is UNSAT — under consistency mode, that means the step
+    # contradicts the premises, so contradiction_found=True. Counter-model
+    # is None because no satisfying assignment exists.
+    cnf = _cnf(_clause(_atom("P")), _clause(_atom("P", neg=True)))
+    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42, mode="consistency")
+    assert result.contradiction_found is True
+    assert result.counter_model is None
+
+
+def test_verify_entailment_mode_preserves_old_behaviour() -> None:
+    # Under entailment mode, the SAT case yields a counter-model.
+    cnf = _cnf(_clause(_atom("P")), _clause(_atom("Q", neg=True)))
+    result = verify(cnf, shots=DEFAULT_SHOTS, seed=42, mode="entailment")
+    assert result.contradiction_found is True
+    assert result.counter_model is not None
+    assert result.counter_model.assignment == {"P": True, "Q": False}
+
+
+def test_verify_mode_invalid_raises() -> None:
+    cnf = _cnf(_clause(_atom("P")))
+    with pytest.raises(ValueError, match="mode must be"):
+        verify(cnf, shots=DEFAULT_SHOTS, seed=42, mode="bogus")  # type: ignore[arg-type]

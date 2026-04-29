@@ -123,3 +123,19 @@ def test_pipeline_sanity_with_scripted_thinking(
     assert result.total_answer_steps_extracted >= 1, (
         "no answer-phase steps extracted — the new verification path is broken"
     )
+    # Phase 6.8: under consistency-mode verification, all three clean
+    # syllogism steps should be accepted: each is consistent with what
+    # came before. Anything dropped here means consistency-mode
+    # verification is mis-rejecting.
+    assert len(result.committed_steps) == 3, (
+        f"expected all 3 syllogism steps to commit under consistency mode; "
+        f"got {len(result.committed_steps)}: {result.committed_steps}"
+    )
+    assert len(result.gave_up_steps) == 0, f"expected no gave-up steps; got {result.gave_up_steps}"
+    # Consistency-mode rejections carry counter_model=None (UNSAT — no
+    # satisfying assignment to display). Vacuously true when the loop
+    # accepted everything, but documents the new shape of the data.
+    for r in result.rejected_steps:
+        assert r.counter_model is None, (
+            f"unexpected counter_model on consistency-mode rejection: {r}"
+        )
