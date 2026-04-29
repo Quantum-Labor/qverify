@@ -205,4 +205,3 @@ Apache 2.0. See [LICENSE](LICENSE).
 
 ## Author
 
-Serghei Brinza (<!-- TODO: github handle -->)
