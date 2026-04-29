@@ -1,5 +1,7 @@
 # Controller
 
+*Last updated: 2026-04-29*
+
 The controller is the central feature of QVerify. It streams a thinking-mode LLM (Gemma 4 E4B by default), captures the *thinking* phase for UI display only, then extracts numbered declarative reasoning steps from the *answer* phase — the pattern Gemma 4 uses for its actual conclusions. Each extracted step runs through the existing Translator + Verifier pipeline against the running premise list, and — when Grover's search reports that the step is inconsistent with the premises (UNSAT) — the controller injects a focused correction prompt back into the LLM and asks for a single-sentence rewrite. Each step is committed to the premise list only after it survives verification.
 
 Why answer-phase, not thinking-phase? Gemma 4's thinking phase is freeform meta-commentary ("Let me analyze the premises…", multi-sentence markdown paragraphs); splitting it on `\n\n` produced "steps" the translator's single-sentence contract correctly refused. The answer phase carries the structured numbered reasoning (`1. ... 2. ... 3. ...`) — the right granularity for verification. See [`extract_answer_steps`](../qverify/controller/utils.py).
@@ -140,11 +142,12 @@ The IBM backend is intentionally **not** the inner-loop default — IBM Quantum 
 - Same `seed` passed to `Gemma4ThinkingBackend` seeds both `torch.manual_seed` and `transformers.set_seed`, giving deterministic greedy decoding modulo CUDA non-determinism.
 - IBM Quantum hardware is intrinsically non-deterministic; `seed` is accepted for API parity but cannot make hardware runs identical.
 
-## Phase 5 limits
+## v0.1 limits
 
-- The correction prompt is heuristic and fixed; A/B testing alternative phrasings happens in `qverify/controller/correction.py`.
-- `max_retries_per_step` is a fixed budget per step; an adaptive budget that grows with reasoning depth is future work.
-- Multi-turn conversations are not supported — a single `reason_with_verification` call is one user turn.
-- The controller's premise-CNF cache is per-instance; long sessions that would benefit from a persistent cache are out of scope for this phase.
-- Streaming the `ControllerEvent` stream over SSE / WebSocket is Phase 7 (Gradio) territory; today the only sink is the `emit` callback.
-- `extract_answer_steps` keeps only the **first line** of each numbered point; multi-line continuations (a step that wraps onto a second physical line) are dropped past the first line. Phase 7+ may extend the regex if benchmarks need multi-line support.
+- The correction prompt is heuristic and fixed. A/B testing alternative phrasings happens in `qverify/controller/correction.py`.
+- `max_retries_per_step` is a fixed budget per step. An adaptive budget that grows with reasoning depth is future work.
+- Multi-turn conversations are not supported. A single `reason_with_verification` call is one user turn.
+- The controller's premise-CNF cache is per-instance. Long sessions that would benefit from a persistent cache are out of scope.
+- The Gradio demo (in `space/`) calls the controller synchronously and renders the final result; streaming the `ControllerEvent` stream over SSE / WebSocket is future work.
+- `extract_answer_steps` keeps only the first line of each numbered point. Multi-line continuations (a step that wraps onto a second physical line) are dropped past the first line.
+- Free-form thinking-phase parsing is intentionally not attempted in v0.1: paragraphs in the thinking phase are multi-sentence and the single-statement translator cannot consume them. The controller therefore verifies the answer phase, which Gemma 4 emits as numbered declarative steps. Free-form thinking-phase reasoning is a v0.2 roadmap item.

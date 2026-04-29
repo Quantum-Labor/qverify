@@ -1,5 +1,7 @@
 # Grover's algorithm in QVerify
 
+*Last updated: 2026-04-29*
+
 Grover's algorithm searches a database of `N = 2^n` items for a marked subset of `M` items in roughly `π/4 · √(N/M)` queries, instead of the `N/2` expected of a classical brute-force search. In QVerify the "database" is the assignment space of a Boolean formula and the "marked items" are the satisfying assignments — finding one is the same as finding a counter-model that witnesses an inconsistency between the LLM's reasoning step and the surrounding premises.
 
 ## The four ingredients
@@ -34,7 +36,7 @@ This is standard Grover practice. The quantum advantage is in *finding* the cand
 
 - 16 propositional variables, hard cap. The state-vector simulator's memory grows as `2^(n + n_clauses + 1)`, so even at the cap practical instances stay small.
 - Ground atoms only. Free first-order variables (single-letter or short lowercase tokens) are rejected at the encoder; substitute concrete constants before calling `verify()`.
-- PennyLane `default.qubit` simulator only. Real IBM Heron r2 hardware lands in Phase 4.
+- PennyLane `default.qubit` simulator and IBM Quantum's Heron r2 hardware (verified job `d7o7dsqk4prs73dt4s6g` on `ibm_fez`, 2026-04-28). The simulator is the inner-loop default; hardware is opt-in. See [`docs/quantum-hardware-notes.md`](quantum-hardware-notes.md).
 
 ## Worked example: the penguin CNF
 

@@ -1,0 +1,205 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" width="1200" height="820"
+     font-family="Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif" role="img"
+     aria-labelledby="title desc">
+  <title id="title">QVerify architecture</title>
+  <desc id="desc">Data flow from a natural-language problem through pre-pass, reasoning, per-step verification, to a verified controller result. Quantum verification can run on the PennyLane simulator or on IBM Heron r2 hardware.</desc>
+
+  <defs>
+    <!-- subtle drop shadow -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/>
+      <feOffset dx="0" dy="2" result="offset"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.18"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <!-- arrowheads -->
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3a5d7d"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c4621a"/>
+    </marker>
+    <marker id="arrow-loop" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7a8a99"/>
+    </marker>
+
+    <!-- per-step pipeline gradient (very subtle) -->
+    <linearGradient id="pipeBg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#f3f6fa"/>
+      <stop offset="100%" stop-color="#e8eef5"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background -->
+  <rect width="1200" height="820" fill="#fafbfc"/>
+
+  <!-- title -->
+  <text x="40" y="46" font-size="22" font-weight="700" fill="#1f2d3d">QVerify</text>
+  <text x="40" y="68" font-size="13" fill="#5a6b7e">quantum-assisted verification of structured LLM reasoning</text>
+  <text x="1160" y="46" font-size="11" fill="#5a6b7e" text-anchor="end">v0.1</text>
+  <line x1="40" y1="80" x2="1160" y2="80" stroke="#dde3ea" stroke-width="1"/>
+
+  <!-- ============ STAGE 1: input + pre-pass + reasoner ============ -->
+  <text x="40" y="108" font-size="11" font-weight="700" fill="#7a8a99" letter-spacing="1.2">SETUP</text>
+
+  <!-- Input box -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="120" width="280" height="120" rx="8" fill="#ffffff" stroke="#3a5d7d" stroke-width="1.5"/>
+    <text x="56" y="144" font-size="13" font-weight="700" fill="#1f2d3d">Natural-language problem</text>
+    <text x="56" y="166" font-size="10" fill="#5a6b7e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">"Premises: All cats have fur.</text>
+    <text x="56" y="180" font-size="10" fill="#5a6b7e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">Tom is a cat.</text>
+    <text x="56" y="194" font-size="10" fill="#5a6b7e" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">Question: does Tom have fur?"</text>
+    <text x="56" y="222" font-size="10" fill="#7a8a99" font-style="italic">user-supplied</text>
+  </g>
+
+  <!-- arrow input -> pre-pass -->
+  <line x1="320" y1="180" x2="370" y2="180" stroke="#3a5d7d" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Pre-pass box -->
+  <g filter="url(#shadow)">
+    <rect x="370" y="120" width="260" height="120" rx="8" fill="#ffffff" stroke="#3a5d7d" stroke-width="1.5"/>
+    <text x="386" y="144" font-size="13" font-weight="700" fill="#1f2d3d">Problem pre-pass</text>
+    <text x="386" y="160" font-size="10" fill="#5a6b7e">extract universe, sentence by sentence</text>
+    <line x1="386" y1="172" x2="614" y2="172" stroke="#dde3ea" stroke-width="1"/>
+    <text x="386" y="190" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d">Universe = {Tom}</text>
+    <text x="386" y="206" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d">premise CNF: 1 clause</text>
+    <text x="386" y="222" font-size="10" fill="#7a8a99" font-style="italic">qverify.controller</text>
+  </g>
+
+  <!-- arrow pre-pass -> reasoner -->
+  <line x1="630" y1="180" x2="680" y2="180" stroke="#3a5d7d" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Reasoner box -->
+  <g filter="url(#shadow)">
+    <rect x="680" y="120" width="280" height="120" rx="8" fill="#ffffff" stroke="#3a5d7d" stroke-width="1.5"/>
+    <text x="696" y="144" font-size="13" font-weight="700" fill="#1f2d3d">Gemma 4 E4B (thinking mode)</text>
+    <text x="696" y="160" font-size="10" fill="#5a6b7e">channel-tagged stream: thinking | answer</text>
+    <line x1="696" y1="172" x2="944" y2="172" stroke="#dde3ea" stroke-width="1"/>
+    <text x="696" y="190" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d">stream_reasoning(messages, ...)</text>
+    <text x="696" y="206" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d">-&gt; Iterator[StreamChunk]</text>
+    <text x="696" y="222" font-size="10" fill="#7a8a99" font-style="italic">qverify.controller.llm</text>
+  </g>
+
+  <!-- arrow reasoner -> step extractor (down then right) -->
+  <line x1="820" y1="240" x2="820" y2="266" stroke="#3a5d7d" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- Step extractor -->
+  <g filter="url(#shadow)">
+    <rect x="640" y="266" width="360" height="74" rx="8" fill="#ffffff" stroke="#3a5d7d" stroke-width="1.5"/>
+    <text x="656" y="288" font-size="12" font-weight="700" fill="#1f2d3d">extract_answer_steps()</text>
+    <text x="656" y="305" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d">["All cats have fur.",</text>
+    <text x="656" y="319" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d"> "Tom is a cat.",</text>
+    <text x="656" y="333" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d"> "Therefore Tom has fur."]</text>
+  </g>
+
+  <!-- arrow step extractor -> per-step pipeline (down) -->
+  <line x1="820" y1="340" x2="820" y2="376" stroke="#3a5d7d" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- ============ STAGE 2: per-step pipeline ============ -->
+  <text x="40" y="376" font-size="11" font-weight="700" fill="#7a8a99" letter-spacing="1.2">PER-STEP PIPELINE  <tspan fill="#5a6b7e" font-weight="400">(repeated for each extracted step)</tspan></text>
+
+  <!-- pipeline panel -->
+  <rect x="40" y="386" width="1120" height="216" rx="10" fill="url(#pipeBg)" stroke="#cdd6e0" stroke-width="1"/>
+
+  <!-- step input chip -->
+  <g filter="url(#shadow)">
+    <rect x="68" y="412" width="160" height="58" rx="6" fill="#ffffff" stroke="#3a5d7d" stroke-width="1.2"/>
+    <text x="148" y="432" font-size="11" font-weight="700" fill="#1f2d3d" text-anchor="middle">step text</text>
+    <text x="148" y="450" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#5a6b7e" text-anchor="middle">"Tom is a cat."</text>
+    <text x="148" y="464" font-size="9" fill="#7a8a99" text-anchor="middle">+ premise list</text>
+  </g>
+  <line x1="228" y1="441" x2="252" y2="441" stroke="#3a5d7d" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- 1. Translate -->
+  <g filter="url(#shadow)">
+    <rect x="252" y="412" width="170" height="58" rx="6" fill="#ffffff" stroke="#3a5d7d" stroke-width="1.2"/>
+    <text x="268" y="430" font-size="12" font-weight="700" fill="#1f2d3d">1. Translate</text>
+    <text x="268" y="446" font-size="10" fill="#5a6b7e">Gemma 4 E4B + outlines</text>
+    <text x="268" y="460" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d">-&gt; CNF, Universe</text>
+  </g>
+  <line x1="422" y1="441" x2="446" y2="441" stroke="#3a5d7d" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- 2. Ground -->
+  <g filter="url(#shadow)">
+    <rect x="446" y="412" width="170" height="58" rx="6" fill="#ffffff" stroke="#3a5d7d" stroke-width="1.2"/>
+    <text x="462" y="430" font-size="12" font-weight="700" fill="#1f2d3d">2. Ground</text>
+    <text x="462" y="446" font-size="10" fill="#5a6b7e">expand over Universe</text>
+    <text x="462" y="460" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d">forall x -&gt; propositional</text>
+  </g>
+  <line x1="616" y1="441" x2="640" y2="441" stroke="#c4621a" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+
+  <!-- 3. Verify (Grover) — orange accent -->
+  <g filter="url(#shadow)">
+    <rect x="640" y="412" width="190" height="58" rx="6" fill="#fff5ec" stroke="#c4621a" stroke-width="1.4"/>
+    <text x="656" y="430" font-size="12" font-weight="700" fill="#7a3a08">3. Verify</text>
+    <text x="656" y="446" font-size="10" fill="#7a3a08">Grover's search</text>
+    <text x="656" y="460" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#7a3a08">mode = consistency</text>
+  </g>
+  <line x1="830" y1="441" x2="854" y2="441" stroke="#3a5d7d" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+  <!-- 4. Commit / Reject -->
+  <g filter="url(#shadow)">
+    <rect x="854" y="412" width="200" height="58" rx="6" fill="#ffffff" stroke="#3a5d7d" stroke-width="1.2"/>
+    <text x="870" y="430" font-size="12" font-weight="700" fill="#1f2d3d">4. Commit / Reject</text>
+    <text x="870" y="446" font-size="10" fill="#5a6b7e">SAT -&gt; commit, UNSAT -&gt; retry</text>
+    <text x="870" y="460" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d">max_retries_per_step</text>
+  </g>
+
+  <!-- retry loop arrow: from Commit/Reject back to step text input -->
+  <path d="M 954 470 Q 954 540 500 540 Q 148 540 148 472" fill="none" stroke="#7a8a99" stroke-width="1.2" stroke-dasharray="4 4" marker-end="url(#arrow-loop)"/>
+  <text x="540" y="558" font-size="10" fill="#7a8a99" font-style="italic" text-anchor="middle">on UNSAT: ask LLM to rewrite the step (mini-conversation), retry</text>
+
+  <!-- legend for the verifier color -->
+  <g>
+    <rect x="68" y="568" width="14" height="14" rx="2" fill="#fff5ec" stroke="#c4621a" stroke-width="1.2"/>
+    <text x="90" y="580" font-size="10" fill="#5a6b7e">quantum component</text>
+    <rect x="220" y="568" width="14" height="14" rx="2" fill="#ffffff" stroke="#3a5d7d" stroke-width="1.2"/>
+    <text x="242" y="580" font-size="10" fill="#5a6b7e">classical component</text>
+  </g>
+
+  <!-- ============ STAGE 3: backends + output ============ -->
+  <text x="40" y="638" font-size="11" font-weight="700" fill="#7a8a99" letter-spacing="1.2">VERIFIER BACKENDS</text>
+
+  <!-- backend: PennyLane sim -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="650" width="320" height="110" rx="8" fill="#fff5ec" stroke="#c4621a" stroke-width="1.5"/>
+    <text x="56" y="674" font-size="13" font-weight="700" fill="#7a3a08">PennyLane simulator</text>
+    <text x="56" y="690" font-size="10" fill="#7a3a08">default for the inner loop, fast, deterministic with seed</text>
+    <line x1="56" y1="700" x2="344" y2="700" stroke="#e9c5a4" stroke-width="1"/>
+    <text x="56" y="718" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#7a3a08">PennyLaneBackend()</text>
+    <text x="56" y="734" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#7a3a08">device = "default.qubit"</text>
+    <text x="56" y="750" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#7a3a08">runs in milliseconds on CPU</text>
+  </g>
+
+  <!-- backend: IBM Heron -->
+  <g filter="url(#shadow)">
+    <rect x="380" y="650" width="380" height="110" rx="8" fill="#fff5ec" stroke="#c4621a" stroke-width="1.5"/>
+    <text x="396" y="674" font-size="13" font-weight="700" fill="#7a3a08">IBM Heron r2 (opt-in)</text>
+    <text x="396" y="690" font-size="10" fill="#7a3a08">real quantum hardware, 156 qubits, ibm_fez backend</text>
+    <line x1="396" y1="700" x2="744" y2="700" stroke="#e9c5a4" stroke-width="1"/>
+    <text x="396" y="718" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#7a3a08">IBMQuantumBackend()</text>
+    <text x="396" y="734" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#7a3a08">verified job: d7o7dsqk4prs73dt4s6g</text>
+    <text x="396" y="750" font-size="10" fill="#7a3a08">2026-04-28, 1024 shots, 2 Grover iters</text>
+  </g>
+
+  <!-- arrow backends -> output -->
+  <line x1="760" y1="704" x2="804" y2="704" stroke="#c4621a" stroke-width="1.5" marker-end="url(#arrow-orange)"/>
+
+  <!-- Output box -->
+  <g filter="url(#shadow)">
+    <rect x="804" y="650" width="356" height="110" rx="8" fill="#ffffff" stroke="#3a5d7d" stroke-width="1.5"/>
+    <text x="820" y="674" font-size="13" font-weight="700" fill="#1f2d3d">ControllerResult</text>
+    <text x="820" y="690" font-size="10" fill="#5a6b7e">frozen pydantic model returned to the caller</text>
+    <line x1="820" y1="700" x2="1144" y2="700" stroke="#dde3ea" stroke-width="1"/>
+    <text x="820" y="718" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d">committed_steps: tuple[str, ...]</text>
+    <text x="820" y="734" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d">rejected_steps: tuple[RejectedStep, ...]</text>
+    <text x="820" y="750" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#3a5d7d">final_answer: str</text>
+  </g>
+
+  <!-- footer -->
+  <line x1="40" y1="788" x2="1160" y2="788" stroke="#dde3ea" stroke-width="1"/>
+  <text x="40" y="806" font-size="10" fill="#7a8a99">github.com/Quantum-Labor/qverify</text>
+  <text x="1160" y="806" font-size="10" fill="#7a8a99" text-anchor="end">Apache-2.0  ·  built by Serghei Brinza</text>
+</svg>

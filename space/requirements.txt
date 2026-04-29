@@ -1,0 +1,2 @@
+qverify @ git+https://github.com/Quantum-Labor/qverify.git@main
+gradio>=5.0.0

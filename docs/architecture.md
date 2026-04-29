@@ -1,5 +1,7 @@
 # Architecture
 
+*Last updated: 2026-04-29*
+
 QVerify intercepts each step of a thinking-mode LLM's chain of thought, translates the step into a first-order Boolean satisfiability problem with declared entities, grounds it against a finite universe of discourse, and runs Grover's search on a quantum simulator or real quantum hardware to check whether the step is **consistent** with the premises established so far. When the verifier finds an inconsistency (the conjunction of premises and step is unsatisfiable), the controller feeds the result back to the reasoner and asks it to rewrite the step. The loop continues until the reasoner produces a step that the verifier accepts, then proceeds to the next step.
 
 ## Data flow

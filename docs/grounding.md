@@ -1,6 +1,8 @@
 # Grounding
 
-The Phase 3 verifier accepts only propositional CNF — formulas where every literal is a Boolean variable with no first-order arguments. Real reasoning, on the other hand, almost always emits universally quantified statements: "All cats have fur", "Every bird flies". The Phase 4.5 grounding pass closes that gap by instantiating each free first-order variable with each constant in a finite universe of discourse, producing a propositional CNF the verifier can hand straight to Grover's search.
+*Last updated: 2026-04-29*
+
+The verifier accepts only propositional CNF — formulas where every literal is a Boolean variable with no first-order arguments. Real reasoning, on the other hand, almost always emits universally quantified statements: "All cats have fur", "Every bird flies". The grounding pass closes that gap by instantiating each free first-order variable with each constant in a finite universe of discourse, producing a propositional CNF the verifier can hand straight to Grover's search.
 
 ## The `Universe` model
 
@@ -43,9 +45,38 @@ If the input CNF is already propositional, `ground_cnf` returns it unchanged —
 
 If the CNF has free variables but the universe is empty, `ground_cnf` raises `GroundingError` (a subclass of `VerifierError`) — there are no constants to instantiate against.
 
+### Worked example: 2-clause CNF over a 2-element universe
+
+```python
+# forall x. (Cat(x) -> Fur(x)) AND (Cat(x) -> Mammal(x))
+two_clause = CNF(clauses=(
+    Clause(literals=(
+        Literal(predicate="Cat", args=("x",), negated=True),
+        Literal(predicate="Fur", args=("x",)),
+    )),
+    Clause(literals=(
+        Literal(predicate="Cat", args=("x",), negated=True),
+        Literal(predicate="Mammal", args=("x",)),
+    )),
+))
+universe = Universe(constants=("Tom", "Whiskers"))
+grounded = ground_cnf(two_clause, universe)
+```
+
+Output (4 propositional clauses, deterministic ordering):
+
+```
+(¬Cat(Tom)      ∨ Fur(Tom))
+(¬Cat(Whiskers) ∨ Fur(Whiskers))
+(¬Cat(Tom)      ∨ Mammal(Tom))
+(¬Cat(Whiskers) ∨ Mammal(Whiskers))
+```
+
+The cost is `clauses * |universe|^variables`. For one variable and a 2-element universe, expansion is linear in clause count.
+
 ## How the controller uses grounding
 
-The Phase 5 [`Controller`](../qverify/controller/controller.py) calls the translator on each premise and on the step itself (translated as-is — no `It is not the case that …` prefix; Phase 6.8 verifies `premises ∧ step` for consistency rather than `premises ∧ ¬step` for entailment), getting back a [`TranslationResult`](../qverify/translator/types.py) (CNF + Universe) per call. It then:
+The [`Controller`](../qverify/controller/controller.py) calls the translator on each premise and on the step itself (translated as-is — no `It is not the case that …` prefix; Phase 6.8 verifies `premises ∧ step` for consistency rather than `premises ∧ ¬step` for entailment), getting back a [`TranslationResult`](../qverify/translator/types.py) (CNF + Universe) per call. It then:
 
 1. Merges the universes — union of every result's `constants`, deduplicated and sorted.
 2. Concatenates the CNF clauses across results.

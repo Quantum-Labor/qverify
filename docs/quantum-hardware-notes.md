@@ -1,6 +1,8 @@
 # IBM Quantum hardware notes
 
-The Phase 3 verifier ships with two interchangeable backends: a fast PennyLane simulator (the default, used for development and CI) and an IBM Quantum hardware backend that runs the same Grover circuit on a Heron r2 device (default `ibm_kingston`). The simulator stays the default everywhere — hardware is opt-in by passing `backend=IBMQuantumBackend()` to `verify()`.
+*Last updated: 2026-04-29*
+
+The verifier ships with two interchangeable backends: a fast PennyLane simulator (the default, used for development and CI) and an IBM Quantum hardware backend that runs the same Grover circuit on a Heron r2 device (default `ibm_kingston`). The simulator stays the default everywhere — hardware is opt-in by passing `backend=IBMQuantumBackend()` to `verify()`.
 
 ## Verified hardware runs
 
@@ -43,8 +45,8 @@ If `IBM_QUANTUM_TOKEN` or `IBM_QUANTUM_INSTANCE` is missing, the test is skipped
 - **Transpilation matters.** We use `optimization_level=3` by default, which routinely cuts gate count by 30–50% versus level 1 on Heron devices. Override via `IBMQuantumBackend(optimization_level=...)` if you need to compare.
 - **Backend selection.** With no `backend_name` argument, the backend resolves to the least-busy operational Heron-class device with at least 5 qubits at job-submission time. Pin a specific device with `IBMQuantumBackend(backend_name="ibm_kingston")` if you want reproducible target hardware.
 
-## Phase 4 limits
+## Limits
 
 - The simulator stays the default for `verify()`. Hardware is strictly opt-in.
-- We support Heron-class backends only; older Eagle r3 devices are not in the filter.
-- Job submission blocks until completion. Asynchronous job tracking lands in a later phase if needed.
+- Heron-class backends only; older Eagle r3 devices are not in the filter.
+- Job submission blocks until completion. Asynchronous job tracking is out of scope for v0.1.

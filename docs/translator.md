@@ -1,6 +1,8 @@
 # Translator
 
-The Translator turns one natural-language reasoning step into a [`TranslationResult`](../qverify/translator/types.py) carrying both a (possibly first-order) CNF and the universe of constants the controller needs to ground that CNF before handing it to Grover's search. As of Phase 6, the production backend uses **grammar-constrained generation** via [outlines](https://github.com/dottxt-ai/outlines): the LLM's token-level generation is constrained by a Pydantic schema, so syntactically invalid output is mathematically impossible. Combined with the strict deterministic parser this gives two layers of defence — outlines guarantees the JSON shape, and the parser surfaces any *semantic* mismatches (wrong predicate case, free variable declared as a constant) with a clear `TranslationParseError`.
+*Last updated: 2026-04-29*
+
+The Translator turns one natural-language reasoning step into a [`TranslationResult`](../qverify/translator/types.py) carrying both a (possibly first-order) CNF and the universe of constants the controller needs to ground that CNF before handing it to Grover's search. The production backend uses **grammar-constrained generation** via [outlines](https://github.com/dottxt-ai/outlines): the LLM's token-level generation is constrained by a Pydantic schema, so syntactically invalid output is mathematically impossible. Combined with the strict deterministic parser this gives two layers of defence — outlines guarantees the JSON shape, and the parser surfaces any *semantic* mismatches (wrong predicate case, free variable declared as a constant) with a clear `TranslationParseError`.
 
 ## Public return type
 
@@ -14,7 +16,7 @@ result.cnf       # CNF — the propositional / first-order formula
 result.universe  # Universe — constants declared in this statement
 ```
 
-`TranslationResult` is a frozen Pydantic model (`cnf: CNF`, `universe: Universe`). The Phase 5 controller merges universes across translator calls and grounds the combined CNF before verification.
+`TranslationResult` is a frozen Pydantic model (`cnf: CNF`, `universe: Universe`). The controller merges universes across translator calls and grounds the combined CNF before verification.
 
 ## JSON schema the LLM emits
 
@@ -29,10 +31,10 @@ result.universe  # Universe — constants declared in this statement
 }
 ```
 
-- `entities` — the universe of declared constants for this statement. Every literal argument that is not a free variable (lowercase, length < 4) MUST appear here; conversely, no variable may appear here. Empty `[]` is allowed only for purely propositional statements or universals with no concrete constants.
-- `clauses` — same shape as the original Phase 2 schema.
+- `entities` — the universe of declared constants for this statement. Every literal argument that is not a free variable (lowercase, length < 4) must appear here; conversely, no variable may appear here. Empty `[]` is allowed only for purely propositional statements or universals with no concrete constants.
+- `clauses` — disjunctions of literals.
 
-The defensive [parser](../qverify/translator/parser.py) validates the entities-vs-literal-args consistency and raises `TranslationParseError` on any mismatch. When the `entities` field is absent in the LLM output, the parser logs a warning and defaults to an empty universe (Phase 2 backwards compatibility).
+The defensive [parser](../qverify/translator/parser.py) validates the entities-vs-literal-args consistency and raises `TranslationParseError` on any mismatch. When the `entities` field is absent in the LLM output, the parser logs a warning and defaults to an empty universe.
 
 ## CNF data model
 
@@ -95,7 +97,7 @@ attempt 3 raw: "{\"clauses\": [{\"literals\": [...]}]}"  -> SUCCESS  (stricter p
 
 - `Gemma4StructuredBackend` (alias `GemmaE2BBackend`) — production, constrained-generation via outlines. Lazy-loads Gemma 4 E4B by default (gated; default id is `qverify.utils.models.TRANSLATOR_MODEL_ID`, currently `google/gemma-4-E4B-it`) on the first `generate()` call. Accept the Gemma license at https://huggingface.co/google/gemma-4-E4B-it before first use. Uses bfloat16 + `device_map="auto"`. Outlines compiles [`TranslationSchema`](../qverify/translator/schema.py) into a token-level finite state machine on the first call (~few seconds); subsequent translations are normal generate-token speed. The old `GemmaE2BBackend` name is preserved as an alias so existing imports keep working.
 
-  **E2B vs E4B.** Phase 6 originally targeted Gemma 4 E2B (2B params) for the smaller memory and latency footprint, but E2B failed to encode universal quantification reliably — on `"All cats have fur."` it emitted the constant `Cat` where a free variable was required. E4B (4B params) handles this case correctly under the same constrained-generation grammar. The trade-off is roughly 2-3× slower per generation; the Translator runs O(steps) times per reasoning loop, so wall-clock impact is ~5-15 extra seconds per run. To opt back into E2B, pass `Gemma4StructuredBackend(model_id="google/gemma-4-E2B-it")` explicitly.
+  **E2B vs E4B.** Earlier development targeted Gemma 4 E2B (2B params) for the smaller memory and latency footprint, but E2B failed to encode universal quantification reliably — on `"All cats have fur."` it emitted the constant `Cat` where a free variable was required. E4B (4B params) handles this case correctly under the same constrained-generation grammar. The trade-off is roughly 2-3x slower per generation; the Translator runs O(steps) times per reasoning loop, so wall-clock impact is around 5-15 extra seconds per run. To opt back into E2B, pass `Gemma4StructuredBackend(model_id="google/gemma-4-E2B-it")` explicitly.
 - `StubBackend(responses: dict[str, str])` — for tests. Returns canned responses keyed by exact prompt.
 
 To swap in a different backend (e.g. an OpenAI-compatible server, a vLLM endpoint, or a different Gemma variant) implement the two-method Protocol and pass the instance to `Translator(backend=...)`.
@@ -119,10 +121,10 @@ from qverify.translator.llm import GemmaE2BBackend
 GemmaE2BBackend(model_id="google/gemma-4-E2B-it@<revision>")
 ```
 
-## Known limitations (Phase 2)
+## Known limitations
 
 - Propositional and simple first-order only. No higher-order quantification, no modal logic, no arithmetic, no set theory.
 - The predicate vocabulary is open-ended — the LLM picks predicate names. There is no closed-world or canonical-name normalization yet, so `Bird` and `IsBird` are different propositions.
-- Statements with more than ~3 atomic facts often fail validation, because Gemma 4 E2B has a hard time keeping nested CNF nesting consistent. Phase 6 will measure this; for now, prefer one fact per call.
-- DIMACS rendering treats each `Predicate(args)` as a distinct propositional variable. Free first-order variables and ground constants are not distinguished — that grounding is the verifier's job in Phase 3.
+- Statements with more than ~3 atomic facts often fail validation. For now, prefer one fact per call.
+- DIMACS rendering treats each `Predicate(args)` as a distinct propositional variable. Free first-order variables and ground constants are not distinguished — that grounding is the verifier's job.
 - No closed-world assumption: absence of a fact does not imply its negation.

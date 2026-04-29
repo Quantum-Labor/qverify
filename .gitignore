@@ -66,3 +66,6 @@ Thumbs.db
 *.swp
 *.swo
 *~
+
+# Local one-off diagnostic scripts (not committed)
+scripts/
