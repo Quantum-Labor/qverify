@@ -157,8 +157,15 @@ def _load_benchmark_summaries() -> str:
     import json
     from pathlib import Path
 
-    results_root = Path(__file__).resolve().parent.parent / "benchmarks" / "results"
-    if not results_root.exists():
+    # On the HF Space app.py sits at the repo root, so benchmarks/ is one
+    # directory down from app.py. In the local repo app.py lives under
+    # space/, so benchmarks/ is two directories up. Try both layouts.
+    here = Path(__file__).resolve().parent
+    for candidate in (here / "benchmarks" / "results", here.parent / "benchmarks" / "results"):
+        if candidate.exists():
+            results_root = candidate
+            break
+    else:
         return "_No benchmark reports checked in yet._"
 
     rows: list[str] = []
