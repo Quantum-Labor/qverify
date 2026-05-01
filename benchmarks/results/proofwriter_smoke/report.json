@@ -1,0 +1,14 @@
+{
+  "dataset": "proofwriter",
+  "backend": "default.qubit",
+  "n_examples": 0,
+  "n_skipped": 7,
+  "accuracy": 0.0,
+  "avg_seconds": 0.0,
+  "p95_seconds": 0.0,
+  "n_translated": 3,
+  "n_translation_failed": 7,
+  "avg_translation_seconds": 54.93012110267106,
+  "n_skipped_too_large": 3,
+  "results": []
+}
