@@ -278,16 +278,37 @@ def _hf_record_to_examples(
     return out
 
 
+_DEPTH_FIELDS: tuple[str, ...] = ("QDep", "depth", "Depth", "qdep")
+
+
+def _record_depth(record: dict[str, Any]) -> int | None:
+    """Extract a depth indicator from a record, if present."""
+    for key in _DEPTH_FIELDS:
+        if key in record:
+            value = record[key]
+            try:
+                return int(value)
+            except (TypeError, ValueError):
+                continue
+    return None
+
+
 def _materialize(
     *,
     dataset_name: str,
     hf_name: str,
-    config_name: str,
     splits: tuple[str, ...],
     depth: int,
     force: bool,
 ) -> Path:
-    """Download a HuggingFace dataset and write per-split JSON files."""
+    """Download a HuggingFace dataset and write per-split JSON files.
+
+    Always passes ``name="default"``: both `tasksource/proofwriter` and
+    `tasksource/ruletaker` publish a single "default" BuilderConfig that
+    bundles every depth. Per-depth filtering happens after load by
+    inspecting :data:`_DEPTH_FIELDS` on each record. A record without any
+    of those fields is accepted unconditionally.
+    """
     cache_dir = _download_root(dataset_name, depth)
     cache_dir.mkdir(parents=True, exist_ok=True)
 
@@ -306,15 +327,18 @@ def _materialize(
 
     for split in splits:
         try:
-            ds = load_dataset(hf_name, config_name, split=split)
+            ds = load_dataset(hf_name, name="default", split=split)
         except Exception as exc:
             raise RuntimeError(
-                f"Failed to load {hf_name}/{config_name} split={split}: {exc}"
+                f"Failed to load {hf_name} (name='default') split={split}: {exc}"
             ) from exc
 
         records: list[dict[str, Any]] = []
         for i, raw in enumerate(ds):
             assert isinstance(raw, dict)
+            record_depth = _record_depth(raw)
+            if record_depth is not None and record_depth != depth:
+                continue
             prefix = f"{dataset_name}_{split}_{i}"
             records.extend(_hf_record_to_examples(raw, prefix, source=dataset_name))
 
@@ -338,7 +362,6 @@ def download_proofwriter(
     return _materialize(
         dataset_name="proofwriter",
         hf_name=_PROOFWRITER_HF_NAME,
-        config_name=f"CWA_depth-{depth}",
         splits=splits,
         depth=depth,
         force=force,
@@ -355,7 +378,6 @@ def download_ruletaker(
     return _materialize(
         dataset_name="ruletaker",
         hf_name=_RULETAKER_HF_NAME,
-        config_name=f"depth-{depth}",
         splits=splits,
         depth=depth,
         force=force,

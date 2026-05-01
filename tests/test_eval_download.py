@@ -17,10 +17,11 @@ from qverify.eval import datasets as datasets_mod
 
 
 def _fake_load_dataset(records: dict[str, list[dict[str, Any]]]) -> Any:
-    """Return a callable that mimics datasets.load_dataset(name, config, split=...)."""
+    """Return a callable that mimics datasets.load_dataset(hf_name, name='default', split=...)."""
 
-    def loader(name: str, config: str, *, split: str) -> Iterable[dict[str, Any]]:
-        del name, config
+    def loader(hf_name: str, *, name: str = "default", split: str) -> Iterable[dict[str, Any]]:
+        assert name == "default", f"expected name='default', got {name!r}"
+        del hf_name
         return records.get(split, [])
 
     return loader
@@ -97,8 +98,8 @@ def test_download_skips_when_cached_unless_forced(
     monkeypatch.setattr(datasets_mod, "_CACHE_ROOT", tmp_path)
     call_count = {"n": 0}
 
-    def fake(name: str, config: str, *, split: str) -> Iterable[dict[str, Any]]:
-        del name, config, split
+    def fake(hf_name: str, *, name: str = "default", split: str) -> Iterable[dict[str, Any]]:
+        del hf_name, name, split
         call_count["n"] += 1
         return []
 
@@ -169,6 +170,40 @@ def test_label_mapping_handles_strings_and_ints() -> None:
     assert _label_from_truth("FALSE") == "inconsistent"
     assert _label_from_truth("Unknown") is None
     assert _label_from_truth(None) is None
+
+
+def test_download_filters_records_by_depth_field(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(datasets_mod, "_CACHE_ROOT", tmp_path)
+    mixed = {
+        "train": [
+            {
+                "QDep": 1,
+                "theory": "A.",
+                "questions": [{"id": "d1q0", "text": "A.", "label": True}],
+            },
+            {
+                "QDep": 3,
+                "theory": "B.",
+                "questions": [{"id": "d3q0", "text": "B.", "label": True}],
+            },
+            {
+                # No depth field — must be accepted
+                "theory": "C.",
+                "questions": [{"id": "ndq0", "text": "C.", "label": True}],
+            },
+        ],
+        "validation": [],
+        "test": [],
+    }
+    monkeypatch.setattr("datasets.load_dataset", _fake_load_dataset(mixed))
+
+    cache_dir = datasets_mod.download_proofwriter(depth=1)
+    train = json.loads((cache_dir / "train.json").read_text(encoding="utf-8"))
+    ids = sorted(r["id"] for r in train)
+    # depth=3 record dropped; the no-depth record is accepted
+    assert ids == ["d1q0", "ndq0"]
 
 
 def test_loader_reads_back_downloaded_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
