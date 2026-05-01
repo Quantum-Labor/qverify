@@ -42,6 +42,13 @@ LOADERS = {
     "ruletaker": load_ruletaker,
 }
 
+# ProofWriter publishes its dev split as "validation"; RuleTaker as "dev".
+# When the user does not pass --split, we pick the right name per dataset.
+DEFAULT_SPLIT = {
+    "proofwriter": "validation",
+    "ruletaker": "dev",
+}
+
 
 def _build_backend(name: str) -> Backend:
     if name == "simulator":
@@ -55,7 +62,11 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="QVerify benchmark runner")
     parser.add_argument("--dataset", required=True, choices=sorted(LOADERS.keys()))
     parser.add_argument("--backend", default="simulator", choices=("simulator", "ibm"))
-    parser.add_argument("--split", default="dev")
+    parser.add_argument(
+        "--split",
+        default=None,
+        help="Split name. Defaults to 'validation' for proofwriter and 'dev' for ruletaker.",
+    )
     parser.add_argument("--max-examples", type=int, default=100)
     parser.add_argument("--shots", type=int, default=1024)
     parser.add_argument(
@@ -74,13 +85,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     loader = LOADERS[args.dataset]
-    examples = list(loader(split=args.split, max_examples=args.max_examples, path=args.input_path))
+    split = args.split or DEFAULT_SPLIT[args.dataset]
+    examples = list(loader(split=split, max_examples=args.max_examples, path=args.input_path))
     skipped_in_load = last_skip_count()
     _log.info(
         "Loaded %d examples for %s/%s (%d malformed records skipped)",
         len(examples),
         args.dataset,
-        args.split,
+        split,
         skipped_in_load,
     )
 

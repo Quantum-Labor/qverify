@@ -31,7 +31,7 @@ v0.1 ships benchmarks against two datasets:
 
 | Dataset | Source | License | Split used |
 | --- | --- | --- | --- |
-| ProofWriter | [ProofWriter (Tafjord et al.)](https://allenai.org/data/proofwriter) | Apache 2.0 | depth-1, dev split |
+| ProofWriter | [ProofWriter (Tafjord et al.)](https://allenai.org/data/proofwriter) | Apache 2.0 | depth-1, validation split |
 | RuleTaker | [RuleTaker (Clark et al.)](https://allenai.org/data/ruletaker) | CC BY 4.0 | depth-1, dev split |
 
 Full attribution and citation details are in

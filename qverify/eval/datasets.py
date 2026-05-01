@@ -150,12 +150,16 @@ def _iter_records(
 
 def load_proofwriter(
     *,
-    split: str = "dev",
+    split: str = "validation",
     depth: int = 1,
     max_examples: int | None = None,
     path: Path | None = None,
 ) -> Iterator[DatasetExample]:
-    """Yield ProofWriter (CWA) examples. ``depth`` is informational here."""
+    """Yield ProofWriter (CWA) examples. ``depth`` is informational here.
+
+    ProofWriter's dev split is named ``validation`` (the HF dataset card's
+    convention); RuleTaker uses ``dev``.
+    """
     del depth  # routed through the cache path by callers, no runtime filter
     yield from _iter_records(
         dataset_name="proofwriter",
@@ -352,12 +356,14 @@ def download_proofwriter(
     *,
     depth: int = 1,
     force: bool = False,
-    splits: tuple[str, ...] = ("train", "dev", "test"),
+    splits: tuple[str, ...] = ("train", "validation", "test"),
 ) -> Path:
     """Download ProofWriter (CWA) at the requested depth into the cache.
 
-    Returns the cache directory path. ``force=True`` re-downloads even if
-    JSON files for every requested split already exist.
+    ProofWriter ships its dev split under the name ``validation`` (unlike
+    RuleTaker, which uses ``dev``). Returns the cache directory path.
+    ``force=True`` re-downloads even if JSON files for every requested
+    split already exist.
     """
     return _materialize(
         dataset_name="proofwriter",

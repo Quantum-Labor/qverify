@@ -38,7 +38,7 @@ _PROOFWRITER_FAKE = {
             ],
         }
     ],
-    "dev": [
+    "validation": [
         {
             "theory": "Tom is a cat.",
             "questions": [
@@ -58,7 +58,7 @@ def test_download_proofwriter_writes_split_files(
 
     cache_dir = datasets_mod.download_proofwriter(depth=1)
     assert cache_dir == tmp_path / "proofwriter" / "depth-1"
-    for split in ("train", "dev", "test"):
+    for split in ("train", "validation", "test"):
         assert (cache_dir / f"{split}.json").exists()
 
 
@@ -105,10 +105,10 @@ def test_download_skips_when_cached_unless_forced(
 
     monkeypatch.setattr("datasets.load_dataset", fake)
 
-    # Pre-create the expected files
+    # Pre-create the expected files (proofwriter uses validation, not dev)
     cache_dir = tmp_path / "proofwriter" / "depth-1"
     cache_dir.mkdir(parents=True)
-    for split in ("train", "dev", "test"):
+    for split in ("train", "validation", "test"):
         (cache_dir / f"{split}.json").write_text("[]", encoding="utf-8")
 
     datasets_mod.download_proofwriter(depth=1, force=False)
@@ -123,7 +123,8 @@ def test_download_ruletaker_uses_distinct_cache_path(
 ) -> None:
     monkeypatch.setattr(datasets_mod, "_CACHE_ROOT", tmp_path)
     monkeypatch.setattr(
-        "datasets.load_dataset", _fake_load_dataset({"train": [], "dev": [], "test": []})
+        "datasets.load_dataset",
+        _fake_load_dataset({"train": [], "validation": [], "dev": [], "test": []}),
     )
 
     pw_cache = datasets_mod.download_proofwriter(depth=1)
@@ -152,7 +153,7 @@ def test_download_all_returns_both_dataset_paths(
     monkeypatch.setattr(datasets_mod, "_CACHE_ROOT", tmp_path)
     monkeypatch.setattr(
         "datasets.load_dataset",
-        _fake_load_dataset({"train": [], "dev": [], "test": []}),
+        _fake_load_dataset({"train": [], "validation": [], "dev": [], "test": []}),
     )
     paths = datasets_mod.download_all(depth=1)
     assert set(paths.keys()) == {"proofwriter", "ruletaker"}
@@ -194,7 +195,7 @@ def test_download_filters_records_by_depth_field(
                 "questions": [{"id": "ndq0", "text": "C.", "label": True}],
             },
         ],
-        "dev": [],
+        "validation": [],
         "test": [],
     }
     monkeypatch.setattr("datasets.load_dataset", _fake_load_dataset(mixed))
