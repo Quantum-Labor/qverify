@@ -50,6 +50,15 @@ def _verifier_label(contradiction_found: bool) -> DatasetLabel:
     return "inconsistent" if contradiction_found else "consistent"
 
 
+def _count_distinct_atoms(cnf: CNF) -> int:
+    """Number of distinct (predicate, args) atoms — equals AtomEncoder.n_qubits."""
+    atoms: set[tuple[str, tuple[str, ...]]] = set()
+    for cl in cnf.clauses:
+        for lit in cl.literals:
+            atoms.add((lit.predicate, lit.args))
+    return len(atoms)
+
+
 def evaluate(
     examples: Iterable[DatasetExample],
     *,
@@ -58,13 +67,21 @@ def evaluate(
     shots: int = 1024,
     translate: TranslateFn | None = None,
     max_examples: int | None = None,
+    max_variables: int | None = None,
 ) -> DatasetReport:
-    """Run the verifier over ``examples`` and return the aggregated report."""
+    """Run the verifier over ``examples`` and return the aggregated report.
+
+    ``max_variables``, when set, skips any example whose grounded CNF would
+    require more qubits than the simulator (or the user's chosen ceiling)
+    can handle. The skip is counted separately as ``n_skipped_too_large``
+    so it does not pollute the translation/oracle/verify failure counts.
+    """
     if backend is None:
         backend = PennyLaneBackend()
 
     results: list[ExampleResult] = []
     n_skipped = 0
+    n_skipped_too_large = 0
     n_processed = 0
     n_translated = 0
     n_translation_failed = 0
@@ -90,6 +107,18 @@ def evaluate(
                 continue
             translation_seconds_total += time.monotonic() - t0
             n_translated += 1
+
+        if max_variables is not None:
+            qubit_count = _count_distinct_atoms(cnf)
+            if qubit_count > max_variables:
+                _log.info(
+                    "Skipping %s: %d distinct atoms exceeds max_variables=%d",
+                    example.id,
+                    qubit_count,
+                    max_variables,
+                )
+                n_skipped_too_large += 1
+                continue
 
         try:
             oracle_sat = pysat_satisfies(cnf)
@@ -132,5 +161,6 @@ def evaluate(
         n_translated=n_translated,
         n_translation_failed=n_translation_failed,
         avg_translation_seconds=avg_translation,
+        n_skipped_too_large=n_skipped_too_large,
         n_skipped=n_skipped,
     )

@@ -33,7 +33,13 @@ def test_atomic_statement_round_trip(translator: Translator) -> None:
     assert isinstance(result, TranslationResult)
     assert isinstance(result.cnf, CNF)
     assert len(result.cnf.clauses) >= 1
-    assert any("penguin" in lit.args for cl in result.cnf.clauses for lit in cl.literals)
+    # Case-insensitive: parser auto-capitalizes lowercase entities so
+    # the arg may surface as "Penguin" rather than "penguin".
+    assert any(
+        any(arg.lower() == "penguin" for arg in lit.args)
+        for cl in result.cnf.clauses
+        for lit in cl.literals
+    )
     print(f"\nCNF: {result.cnf}")
     print(f"Universe: {result.universe}")
 

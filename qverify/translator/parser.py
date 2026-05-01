@@ -35,6 +35,77 @@ class TranslationParseError(ValueError):
         return base
 
 
+def _capitalize_first(s: str) -> str:
+    """Capitalize the first character only, leaving the rest untouched.
+
+    Unlike :py:meth:`str.capitalize` which lowercases the tail (so ``"IBM"``
+    becomes ``"Ibm"``), this preserves any internal capitalization the
+    model chose deliberately. Empty strings pass through unchanged.
+    """
+    return (s[:1].upper() + s[1:]) if s else s
+
+
+def _normalize_entity_casing(data: dict[str, object]) -> dict[str, object]:
+    """Capitalize lowercase entity names so they pass Universe validation.
+
+    RuleTaker premises use bare lowercase animal/person names ("cat",
+    "cow", "tom") which the verifier's :func:`is_free_variable` heuristic
+    treats as free variables, and which :class:`Universe` rejects as
+    constants. We capitalize the first character of every declared entity
+    and rewrite every literal arg whose lowercased form matches a
+    declared entity to use the same capitalized form. Args that do *not*
+    match a declared entity (free variables like ``x``) are left alone.
+
+    The returned dict is a shallow copy; nested structures may be
+    rebuilt as new lists/dicts so the caller can mutate freely.
+    """
+    if not isinstance(data, dict):
+        return data
+
+    raw_entities = data.get("entities")
+    if not isinstance(raw_entities, list) or not all(isinstance(e, str) for e in raw_entities):
+        return data
+
+    rename: dict[str, str] = {}
+    new_entities: list[str] = []
+    for entity in raw_entities:
+        capped = _capitalize_first(entity)
+        rename[entity.lower()] = capped
+        new_entities.append(capped)
+
+    out = dict(data)
+    out["entities"] = new_entities
+
+    raw_clauses = data.get("clauses")
+    if isinstance(raw_clauses, list):
+        new_clauses: list[object] = []
+        for clause in raw_clauses:
+            if not isinstance(clause, dict):
+                new_clauses.append(clause)
+                continue
+            new_clause = dict(clause)
+            literals = clause.get("literals")
+            if isinstance(literals, list):
+                new_literals: list[object] = []
+                for lit in literals:
+                    if not isinstance(lit, dict):
+                        new_literals.append(lit)
+                        continue
+                    new_lit = dict(lit)
+                    args = lit.get("args")
+                    if isinstance(args, list):
+                        new_lit["args"] = [
+                            rename[a.lower()] if isinstance(a, str) and a.lower() in rename else a
+                            for a in args
+                        ]
+                    new_literals.append(new_lit)
+                new_clause["literals"] = new_literals
+            new_clauses.append(new_clause)
+        out["clauses"] = new_clauses
+
+    return out
+
+
 def parse_llm_output(raw: str) -> TranslationResult:
     """Extract and validate a TranslationResult from raw LLM output.
 
@@ -80,11 +151,15 @@ def parse_llm_output(raw: str) -> TranslationResult:
                 raw=raw,
             )
 
+        data = _normalize_entity_casing(data)
         cnf = _build_cnf(data, raw)
         universe = _build_universe(data, raw)
     else:
-        cnf = _cnf_from_schema(schema, raw)
-        universe = _universe_from_schema(schema, raw)
+        # Round-trip the schema through dict so the same casing
+        # normalization runs on the constrained-generation fast path.
+        normalized = _normalize_entity_casing(schema.model_dump())
+        cnf = _build_cnf(normalized, raw)
+        universe = _build_universe(normalized, raw)
 
     _validate_entities_vs_literal_args(cnf, universe, raw)
     return TranslationResult(cnf=cnf, universe=universe)
@@ -105,33 +180,6 @@ def _try_parse_schema_directly(raw: str) -> TranslationSchema | None:
         return TranslationSchema.model_validate_json(stripped)
     except ValidationError:
         return None
-
-
-def _cnf_from_schema(schema: TranslationSchema, raw: str) -> CNF:
-    """Convert a :class:`TranslationSchema` into the strict :class:`CNF` model.
-
-    The schema is permissive (any string predicate, possibly-empty literal
-    list); the CNF model adds the predicate-case and non-empty-clause
-    invariants from Phase 2. Surface those rejections as
-    :class:`TranslationParseError`.
-    """
-    try:
-        return CNF.model_validate({"clauses": [c.model_dump() for c in schema.clauses]})
-    except ValidationError as exc:
-        raise TranslationParseError(
-            f"output does not match CNF schema: {_format_validation_error(exc)}",
-            raw=raw,
-        ) from exc
-
-
-def _universe_from_schema(schema: TranslationSchema, raw: str) -> Universe:
-    try:
-        return Universe(constants=tuple(schema.entities))
-    except ValidationError as exc:
-        raise TranslationParseError(
-            f"invalid universe: {_format_validation_error(exc)}",
-            raw=raw,
-        ) from exc
 
 
 def _build_cnf(data: dict[str, object], raw: str) -> CNF:

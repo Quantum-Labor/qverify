@@ -60,9 +60,9 @@ def test_atomic_statement_translates() -> None:
     backend = StubBackend({build_prompt(statement): ATOMIC_JSON})
     result = Translator(backend).translate(statement)
     assert isinstance(result.cnf, CNF)
-    assert result.universe.constants == ("penguin",)
+    assert result.universe.constants == ("Penguin",)
     assert result.cnf.clauses[0].literals[0].predicate == "Bird"
-    assert result.cnf.clauses[0].literals[0].args == ("penguin",)
+    assert result.cnf.clauses[0].literals[0].args == ("Penguin",)
     assert result.cnf.clauses[0].literals[0].negated is False
 
 
@@ -81,7 +81,7 @@ def test_negation_translates() -> None:
     statement = "Tweety cannot fly."
     backend = StubBackend({build_prompt(statement): NEGATION_JSON})
     result = Translator(backend).translate(statement)
-    assert result.universe.constants == ("tweety",)
+    assert result.universe.constants == ("Tweety",)
     assert result.cnf.clauses[0].literals[0].negated is True
 
 

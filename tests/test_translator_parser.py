@@ -27,9 +27,12 @@ def test_clean_json_parses() -> None:
     assert isinstance(result, TranslationResult)
     assert isinstance(result.cnf, CNF)
     assert isinstance(result.universe, Universe)
-    assert result.universe.constants == ("penguin",)
+    # Lowercase entities are auto-capitalized by the parser so they pass
+    # Universe validation (length-3 lowercase tokens look like free vars).
+    assert result.universe.constants == ("Penguin",)
     assert len(result.cnf.clauses) == 1
     assert result.cnf.clauses[0].literals[0].predicate == "Bird"
+    assert result.cnf.clauses[0].literals[0].args == ("Penguin",)
 
 
 def test_json_in_markdown_fence_parses() -> None:
@@ -145,7 +148,51 @@ def test_entities_field_populates_universe() -> None:
         '{"predicate":"Loves","args":["alice","bobby"],"negated":false}]}]}'
     )
     result = parse_llm_output(raw)
-    assert result.universe.constants == ("alice", "bobby")
+    # Entities are normalized so the resulting Universe accepts them.
+    assert result.universe.constants == ("Alice", "Bobby")
+    assert result.cnf.clauses[0].literals[0].args == ("Alice", "Bobby")
+
+
+def test_lowercase_entities_get_capitalized() -> None:
+    """RuleTaker uses bare lowercase animal names (cat, cow). The parser
+    normalizes them so they survive the Universe constant validator."""
+    raw = (
+        '{"entities":["cat","cow"],'
+        '"clauses":[{"literals":['
+        '{"predicate":"Chases","args":["cat","cow"],"negated":false}]}]}'
+    )
+    result = parse_llm_output(raw)
+    assert result.universe.constants == ("Cat", "Cow")
+    assert result.cnf.clauses[0].literals[0].args == ("Cat", "Cow")
+
+
+def test_already_capitalized_entities_pass_through_unchanged() -> None:
+    """Capitalized constants should not be touched."""
+    raw = (
+        '{"entities":["Tom","IBM"],'
+        '"clauses":[{"literals":['
+        '{"predicate":"Owns","args":["Tom","IBM"],"negated":false}]}]}'
+    )
+    result = parse_llm_output(raw)
+    # Order is implementation-defined (Universe may sort/dedupe).
+    assert set(result.universe.constants) == {"Tom", "IBM"}
+
+
+def test_free_variables_in_args_are_not_capitalized() -> None:
+    """An arg matching a declared entity is rewritten; a bare variable like
+    ``x`` (not declared as an entity) must be left alone so the verifier's
+    free-variable detector still recognizes it."""
+    raw = (
+        '{"entities":["cat"],'
+        '"clauses":[{"literals":['
+        '{"predicate":"Pet","args":["cat"],"negated":false},'
+        '{"predicate":"Owns","args":["x","cat"],"negated":false}]}]}'
+    )
+    result = parse_llm_output(raw)
+    assert result.universe.constants == ("Cat",)
+    # The "x" variable was not in entities, so it stays lowercase.
+    second_lit_args = result.cnf.clauses[0].literals[1].args
+    assert second_lit_args == ("x", "Cat")
 
 
 def test_missing_entities_field_defaults_to_empty_universe() -> None:

@@ -152,6 +152,65 @@ def test_runner_avg_and_p95_seconds_non_negative() -> None:
     assert report.p95_seconds >= report.avg_seconds or report.n_examples == 1
 
 
+def test_runner_skips_examples_whose_cnf_exceeds_max_variables() -> None:
+    # CNF with 3 distinct atoms — exceeds max_variables=2 and is skipped.
+    big_cnf = CNF(
+        clauses=(
+            _clause(_atom("A"), _atom("B")),
+            _clause(_atom("C")),
+        )
+    )
+    examples = [
+        DatasetExample(
+            id="too_big",
+            premises=("A or B",),
+            hypothesis="C",
+            label="consistent",
+            source="x",
+            rendered_cnf=big_cnf,
+        )
+    ]
+    report = evaluate(
+        examples,
+        dataset="x",
+        backend=PennyLaneBackend(),
+        shots=64,
+        max_variables=2,
+    )
+    assert report.n_examples == 0
+    assert report.n_skipped_too_large == 1
+    # Not a failure — just a size skip — so the regular n_skipped stays 0
+    assert report.n_skipped == 0
+
+
+def test_runner_with_max_variables_above_threshold_runs_normally() -> None:
+    big_cnf = CNF(
+        clauses=(
+            _clause(_atom("A")),
+            _clause(_atom("B")),
+        )
+    )
+    examples = [
+        DatasetExample(
+            id="ok",
+            premises=("A",),
+            hypothesis="B",
+            label="consistent",
+            source="x",
+            rendered_cnf=big_cnf,
+        )
+    ]
+    report = evaluate(
+        examples,
+        dataset="x",
+        backend=PennyLaneBackend(),
+        shots=64,
+        max_variables=8,
+    )
+    assert report.n_examples == 1
+    assert report.n_skipped_too_large == 0
+
+
 def test_runner_skips_oracle_failure_gracefully(monkeypatch: pytest.MonkeyPatch) -> None:
     examples = list(load_proofwriter(path=PROOFWRITER, max_examples=1))
 

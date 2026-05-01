@@ -214,6 +214,13 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument("--depth", type=int, default=1)
     parser.add_argument("--max-examples", type=int, default=100)
+    parser.add_argument(
+        "--max-variables",
+        type=int,
+        default=16,
+        help="Skip examples whose grounded CNF needs more than this many qubits "
+        "(reported as n_skipped_too_large). The simulator hard-cap is 16.",
+    )
     parser.add_argument("--shots", type=int, default=1024)
     parser.add_argument(
         "--input-path",
@@ -278,6 +285,7 @@ def main(argv: list[str] | None = None) -> int:
             backend=backend,
             shots=args.shots,
             translate=translate_fn,
+            max_variables=args.max_variables,
         )
     finally:
         # Persist any unsaved translations even if evaluate() raises.
@@ -304,6 +312,7 @@ def main(argv: list[str] | None = None) -> int:
         "n_translated": report.n_translated,
         "n_translation_failed": report.n_translation_failed,
         "avg_translation_seconds": report.avg_translation_seconds,
+        "n_skipped_too_large": report.n_skipped_too_large,
         "report_path": str(report_path),
     }
     print(json.dumps(summary, indent=2))

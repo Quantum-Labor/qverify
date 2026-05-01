@@ -45,6 +45,7 @@ class DatasetReport(BaseModel):
     n_translated: int = Field(default=0, ge=0)
     n_translation_failed: int = Field(default=0, ge=0)
     avg_translation_seconds: float = Field(default=0.0, ge=0.0)
+    n_skipped_too_large: int = Field(default=0, ge=0)
     results: tuple[ExampleResult, ...] = Field(default_factory=tuple)
 
 
@@ -57,6 +58,7 @@ def build_report(
     n_translated: int = 0,
     n_translation_failed: int = 0,
     avg_translation_seconds: float = 0.0,
+    n_skipped_too_large: int = 0,
 ) -> DatasetReport:
     """Aggregate per-example results into a :class:`DatasetReport`."""
     results_tuple = tuple(results)
@@ -73,6 +75,7 @@ def build_report(
             n_translated=n_translated,
             n_translation_failed=n_translation_failed,
             avg_translation_seconds=avg_translation_seconds,
+            n_skipped_too_large=n_skipped_too_large,
             results=(),
         )
     accuracy = sum(1 for r in results_tuple if r.agrees) / n
@@ -92,5 +95,6 @@ def build_report(
         n_translated=n_translated,
         n_translation_failed=n_translation_failed,
         avg_translation_seconds=avg_translation_seconds,
+        n_skipped_too_large=n_skipped_too_large,
         results=results_tuple,
     )
