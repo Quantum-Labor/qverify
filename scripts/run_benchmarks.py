@@ -76,9 +76,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     loader = LOADERS[args.dataset]
-    examples = list(
-        loader(split=args.split, max_examples=args.max_examples, path=args.input_path)
-    )
+    examples = list(loader(split=args.split, max_examples=args.max_examples, path=args.input_path))
     skipped_in_load = last_skip_count()
     _log.info(
         "Loaded %d examples for %s/%s (%d malformed records skipped)",
