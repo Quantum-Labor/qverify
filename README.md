@@ -167,6 +167,35 @@ The quantum path is slower on today's hardware and at these problem sizes.
 The `verify()` interface is designed so that as hardware scales, the client
 code does not change.
 
+## Benchmarks
+
+The harness in [qverify/eval/](qverify/eval/) runs the verifier against
+ProofWriter, RuleTaker, and FOLIO and compares each output against the PySAT
+Glucose3 oracle. See [docs/benchmarks.md](docs/benchmarks.md) for the full
+methodology and license/citation details for each dataset.
+
+| Dataset | Examples | Accuracy | Avg seconds | Qubits used |
+| --- | --- | --- | --- | --- |
+| ProofWriter (CWA, depth-1) | _run_ | _run_ | _run_ | _run_ |
+| RuleTaker (default, depth-1) | _run_ | _run_ | _run_ | _run_ |
+| FOLIO (validation) | _run_ | _run_ | _run_ | _run_ |
+
+To populate the table, run:
+
+```bash
+python scripts/run_benchmarks.py --dataset proofwriter --backend simulator \
+    --max-examples 100 --output benchmarks/results/proofwriter_simulator
+```
+
+Charts are written next to the JSON report:
+
+![Accuracy](benchmarks/results/accuracy.png)
+![Latency](benchmarks/results/latency.png)
+![Qubits](benchmarks/results/qubits.png)
+
+(Chart paths above resolve once at least one benchmark run has been
+checked into `benchmarks/results/`.)
+
 ## Architecture
 
 QVerify has four components, each in its own module:
