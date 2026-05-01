@@ -1,0 +1,27 @@
+[
+  {
+    "id": "rt_001",
+    "premises": ["Round(square)"],
+    "hypothesis": "Round(square)",
+    "label": "consistent",
+    "source": "ruletaker",
+    "rendered_cnf": {
+      "clauses": [
+        [{"predicate": "Round", "args": ["square"], "negated": false}]
+      ]
+    }
+  },
+  {
+    "id": "rt_002",
+    "premises": ["Red(apple)", "Round(apple)"],
+    "hypothesis": "Red(apple)",
+    "label": "consistent",
+    "source": "ruletaker",
+    "rendered_cnf": {
+      "clauses": [
+        [{"predicate": "Red", "args": ["apple"], "negated": false}],
+        [{"predicate": "Round", "args": ["apple"], "negated": false}]
+      ]
+    }
+  }
+]

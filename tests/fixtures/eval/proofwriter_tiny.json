@@ -1,0 +1,44 @@
+[
+  {
+    "id": "pw_001",
+    "premises": ["Bird(robin)"],
+    "hypothesis": "Bird(robin)",
+    "label": "consistent",
+    "source": "proofwriter",
+    "rendered_cnf": {
+      "clauses": [
+        [{"predicate": "Bird", "args": ["robin"], "negated": false}]
+      ]
+    }
+  },
+  {
+    "id": "pw_002",
+    "premises": ["Bird(robin)", "not Bird(robin)"],
+    "hypothesis": "Bird(robin)",
+    "label": "inconsistent",
+    "source": "proofwriter",
+    "rendered_cnf": {
+      "clauses": [
+        [{"predicate": "Bird", "args": ["robin"], "negated": false}],
+        [{"predicate": "Bird", "args": ["robin"], "negated": true}]
+      ]
+    }
+  },
+  {
+    "id": "pw_003",
+    "premises": ["Cat(tom)"],
+    "hypothesis": "Cat(tom)",
+    "label": "consistent",
+    "source": "proofwriter",
+    "rendered_cnf": {
+      "clauses": [
+        [{"predicate": "Cat", "args": ["tom"], "negated": false}]
+      ]
+    }
+  },
+  {
+    "id": "pw_004_malformed",
+    "premises": ["x"],
+    "label": "consistent"
+  }
+]
