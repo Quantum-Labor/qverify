@@ -170,21 +170,32 @@ code does not change.
 ## Benchmarks
 
 The harness in [qverify/eval/](qverify/eval/) runs the verifier against
-ProofWriter, RuleTaker, and FOLIO and compares each output against the PySAT
+ProofWriter and RuleTaker and compares each output against the PySAT
 Glucose3 oracle. See [docs/benchmarks.md](docs/benchmarks.md) for the full
-methodology and license/citation details for each dataset.
+methodology.
+
+Currently benchmarked on ProofWriter and RuleTaker. See
+[benchmarks/LICENSE-DATA.md](benchmarks/LICENSE-DATA.md) for dataset
+attribution and the FOLIO exclusion rationale.
 
 | Dataset | Examples | Accuracy | Avg seconds | Qubits used |
 | --- | --- | --- | --- | --- |
 | ProofWriter (CWA, depth-1) | _run_ | _run_ | _run_ | _run_ |
 | RuleTaker (default, depth-1) | _run_ | _run_ | _run_ | _run_ |
-| FOLIO (validation) | _run_ | _run_ | _run_ | _run_ |
 
-To populate the table, run:
+To populate the table, first download the datasets:
+
+```bash
+python scripts/download_datasets.py --datasets proofwriter,ruletaker
+```
+
+Then run the benchmarks:
 
 ```bash
 python scripts/run_benchmarks.py --dataset proofwriter --backend simulator \
     --max-examples 100 --output benchmarks/results/proofwriter_simulator
+python scripts/run_benchmarks.py --dataset ruletaker --backend simulator \
+    --max-examples 100 --output benchmarks/results/ruletaker_simulator
 ```
 
 Charts are written next to the JSON report:

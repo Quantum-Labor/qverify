@@ -28,7 +28,6 @@ from qverify.eval.charts import (
 )
 from qverify.eval.datasets import (
     last_skip_count,
-    load_folio,
     load_proofwriter,
     load_ruletaker,
 )
@@ -41,7 +40,6 @@ _log = get_logger("qverify.eval.cli")
 LOADERS = {
     "proofwriter": load_proofwriter,
     "ruletaker": load_ruletaker,
-    "folio": load_folio,
 }
 
 

@@ -19,7 +19,6 @@ from qverify.translator.cnf import CNF
 FIXTURES = Path(__file__).parent / "fixtures" / "eval"
 PROOFWRITER = FIXTURES / "proofwriter_tiny.json"
 RULETAKER = FIXTURES / "ruletaker_tiny.json"
-FOLIO = FIXTURES / "folio_tiny.json"
 
 
 def test_load_proofwriter_yields_dataset_examples() -> None:
@@ -71,11 +70,9 @@ def test_load_ruletaker_yields_examples() -> None:
     assert examples[0].source == "ruletaker"
 
 
-def test_load_folio_yields_examples() -> None:
-    examples = list(load_folio(path=FOLIO))
-    assert len(examples) == 2
-    assert examples[0].source == "folio"
-    assert examples[1].label == "inconsistent"
+def test_load_folio_raises_not_implemented() -> None:
+    with pytest.raises(NotImplementedError, match="CC BY-SA"):
+        list(load_folio())
 
 
 def test_loader_missing_file_raises_filenotfound(tmp_path: Path) -> None:
@@ -88,7 +85,7 @@ def test_loader_non_list_root_raises(tmp_path: Path) -> None:
     bad = tmp_path / "bad.json"
     bad.write_text(json.dumps({"not": "a list"}), encoding="utf-8")
     with pytest.raises(ValueError, match="expected a list"):
-        list(load_folio(path=bad))
+        list(load_proofwriter(path=bad))
 
 
 def test_loader_invalid_label_record_is_skipped(tmp_path: Path) -> None:

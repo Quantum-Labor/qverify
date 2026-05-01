@@ -188,13 +188,22 @@ def load_folio(
     max_examples: int | None = None,
     path: Path | None = None,
 ) -> Iterator[DatasetExample]:
-    """Yield FOLIO examples."""
-    yield from _iter_records(
-        dataset_name="folio",
-        split=split,
-        path=path,
-        max_examples=max_examples,
+    """FOLIO is intentionally not included in v0.1.
+
+    Raises :class:`NotImplementedError` because FOLIO ships under CC BY-SA
+    4.0, whose share-alike clause would force any derivative benchmark
+    report into CC BY-SA. This conflicts with the project's Apache 2.0
+    licensing default and is out of scope for v0.1. The signature is kept
+    for forward-compatibility so callers can be migrated cleanly when this
+    constraint is revisited; see ``benchmarks/LICENSE-DATA.md`` for the
+    reasoning.
+    """
+    del split, max_examples, path
+    raise NotImplementedError(
+        "FOLIO is not included in v0.1 due to CC BY-SA share-alike licensing "
+        "constraints; see docs/benchmarks.md"
     )
+    yield  # pragma: no cover - keeps the function a generator for typing
 
 
 _PROOFWRITER_HF_NAME = "tasksource/proofwriter"
