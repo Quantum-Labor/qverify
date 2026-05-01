@@ -2,13 +2,13 @@
   "dataset": "ruletaker",
   "backend": "default.qubit",
   "n_examples": 0,
-  "n_skipped": 0,
+  "n_skipped": 190,
   "accuracy": 0.0,
   "avg_seconds": 0.0,
   "p95_seconds": 0.0,
   "n_translated": 10,
-  "n_translation_failed": 0,
-  "avg_translation_seconds": 0.00019509549892973154,
+  "n_translation_failed": 190,
+  "avg_translation_seconds": 0.00022070860068197363,
   "n_skipped_too_large": 10,
   "results": []
 }

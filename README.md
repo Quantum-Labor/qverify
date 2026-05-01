@@ -1,9 +1,12 @@
 # QVerify
 
+**Live demo:** [huggingface.co/spaces/Laborator/qverify](https://huggingface.co/spaces/Laborator/qverify) — run Grover's algorithm against logical contradictions on a CPU simulator or on a real IBM Heron r2 quantum processor, in your browser.
+
 [![tests](https://github.com/Quantum-Labor/qverify/actions/workflows/tests.yml/badge.svg)](https://github.com/Quantum-Labor/qverify/actions/workflows/tests.yml)
 [![lint](https://github.com/Quantum-Labor/qverify/actions/workflows/lint.yml/badge.svg)](https://github.com/Quantum-Labor/qverify/actions/workflows/lint.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Built with Gemma 4](https://img.shields.io/badge/Built%20with-Gemma%204-4285F4)](https://ai.google.dev/gemma)
+[![Demo](https://img.shields.io/badge/HF%20Space-Laborator%2Fqverify-yellow)](https://huggingface.co/spaces/Laborator/qverify)
 
 > ✓ **Verified on real quantum hardware**
 > Backend: `ibm_fez` (IBM Heron r2, 156 qubits) · Job ID: [`d7q961poagoc73fj6oag`](https://quantum.ibm.com/jobs/d7q961poagoc73fj6oag)
@@ -14,6 +17,48 @@ search on a quantum simulator and on real IBM quantum hardware. Each reasoning
 step is translated into a propositional logic formula, grounded in a finite
 universe of constants, then verified for consistency against the chain of prior
 premises.
+
+## Why this is real engineering
+
+- **Real IBM Heron r2 hardware run** — single-shot reproducible job
+  [`d7q961poagoc73fj6oag`](https://quantum.ibm.com/jobs/d7q961poagoc73fj6oag)
+  on `ibm_fez` (156 qubits) — see [Hardware run](#hardware-run) for the
+  full reproducibility record.
+- **432 unit tests, CI green** — `pytest -m "not slow and not gpu"`
+  (lint via `ruff check`, formatting via `ruff format --check`,
+  typecheck via `mypy --strict qverify`).
+- **Apache 2.0** licensed, public org [github.com/Quantum-Labor](https://github.com/Quantum-Labor).
+- **Project 1 of 3** in the Quantum Co-Processor research program (verifier
+  · translator · controller). This repo ships the verifier, the natural-language
+  translator (Gemma 4 E2B + outlines grammar-constrained generation), and the
+  end-to-end controller; the larger reasoning loop is the upstream research target.
+
+```
+                              ┌────────────────────┐
+  natural-language reasoning  │  Gemma 4 E2B       │
+  step                        │  + outlines        │   first-order CNF
+  ─────────────────────────►  │  (translator)      │  ────────────────►
+                              └────────────────────┘
+                                        │
+                                        ▼
+                              ┌────────────────────┐
+                              │  ground_cnf()      │   propositional CNF
+                              │  (grounding)       │  ────────────────►
+                              └────────────────────┘
+                                        │
+                                        ▼
+                              ┌────────────────────┐
+                              │  Grover's search   │
+                              │  (verifier)        │
+                              └────────────────────┘
+                                        │
+                                        ▼
+                              ┌────────────────────┐
+                              │ PennyLane (sim)    │
+                              │  · OR ·            │
+                              │ IBM Heron r2 (HW)  │
+                              └────────────────────┘
+```
 
 A run on real hardware (IBM Heron r2 processor, ibm_fez backend, 156 qubits)
 is recorded and reproducible: see [Hardware run](#hardware-run).
@@ -178,34 +223,57 @@ Currently benchmarked on ProofWriter and RuleTaker. See
 [benchmarks/LICENSE-DATA.md](benchmarks/LICENSE-DATA.md) for dataset
 attribution and the FOLIO exclusion rationale.
 
-| Dataset | Examples | Accuracy | Avg seconds | Qubits used |
-| --- | --- | --- | --- | --- |
-| ProofWriter (CWA, depth-1) | _run_ | _run_ | _run_ | _run_ |
-| RuleTaker (default, depth-1) | _run_ | _run_ | _run_ | _run_ |
+**Verified end-to-end results from `scripts/run_benchmarks.py`** with the
+Gemma 4 E2B translator and the PennyLane simulator (`--max-variables 16`):
 
-To populate the table, first download the datasets:
+| Dataset | Sample size | n_translated | n_translation_failed | n_skipped_too_large | n_verified | Accuracy |
+| --- | --- | --- | --- | --- | --- | --- |
+| ProofWriter (depth-1, validation) | 100 | 92 | 8 | 92 | 0 | n/a |
+| RuleTaker (depth-1, dev) | 200 | 10 | 190 | 10 | 0 | n/a |
+
+**Reading the table.** Both datasets translate cleanly when Gemma 4 E2B can
+parse the natural-language premises, but every successful translation
+produces a grounded CNF whose distinct-atom count exceeds the 16-qubit
+PennyLane statevector ceiling (`MAX_VARIABLES = 16`), so the verifier never
+runs and accuracy is reported as `n/a` rather than fabricated.
+
+This is consistent with the v0.1 / v0.2 limitations documented in
+[What does not work in v0.1](#what-does-not-work-in-v01) and the
+[Roadmap](#roadmap):
+
+- **Universes with >10-20 constants** trigger the `n_skipped_too_large`
+  counter. Smarter grounding (Roadmap v0.3) is required before the
+  benchmark CNFs fit on a 16-qubit simulator.
+- **Free-form natural-language premises** (especially ProofWriter's
+  abstract templates) still trip the translator (Roadmap v0.2 has
+  the multi-sentence rewrite that addresses this).
+
+The full per-example reports are checked into
+[benchmarks/results/](benchmarks/results/). The pipeline itself
+(`download → translate → ground → size-check → SAT-oracle → Grover`)
+runs end-to-end without errors; the zero verification count is a
+dataset/hardware mismatch, not a harness bug.
+
+To reproduce the runs above, first download the datasets:
 
 ```bash
 python scripts/download_datasets.py --datasets proofwriter,ruletaker
 ```
 
-Then run the benchmarks:
+Then run the benchmarks (requires a CUDA GPU for `--translate gemma-e2b`;
+omit the flag and use a fixture path for CPU-only verification):
 
 ```bash
 python scripts/run_benchmarks.py --dataset proofwriter --backend simulator \
-    --max-examples 100 --output benchmarks/results/proofwriter_simulator
+    --max-examples 100 --translate gemma-e2b \
+    --output benchmarks/results/proofwriter_simulator
 python scripts/run_benchmarks.py --dataset ruletaker --backend simulator \
-    --max-examples 100 --output benchmarks/results/ruletaker_simulator
+    --max-examples 200 --translate gemma-e2b \
+    --output benchmarks/results/ruletaker_simulator
 ```
 
-Charts are written next to the JSON report:
-
-![Accuracy](benchmarks/results/accuracy.png)
-![Latency](benchmarks/results/latency.png)
-![Qubits](benchmarks/results/qubits.png)
-
-(Chart paths above resolve once at least one benchmark run has been
-checked into `benchmarks/results/`.)
+Charts (qubit-count distribution, latency, accuracy) and `report.json`
+land under each `--output` directory.
 
 ## Architecture
 
