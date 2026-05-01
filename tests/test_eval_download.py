@@ -207,6 +207,50 @@ def test_download_filters_records_by_depth_field(
     assert ids == ["d1q0", "ndq0"]
 
 
+def test_loader_default_path_resolves_under_depth_subdir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Loaders without ``path=...`` must look under depth-<N>/<split>.json."""
+    monkeypatch.setattr(datasets_mod, "_CACHE_ROOT", tmp_path)
+
+    pw_dir = tmp_path / "proofwriter" / "depth-1"
+    pw_dir.mkdir(parents=True)
+    (pw_dir / "validation.json").write_text(
+        json.dumps(
+            [
+                {
+                    "id": "x",
+                    "premises": ["A"],
+                    "hypothesis": "A",
+                    "label": "consistent",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    rt_dir = tmp_path / "ruletaker" / "depth-1"
+    rt_dir.mkdir(parents=True)
+    (rt_dir / "dev.json").write_text(
+        json.dumps(
+            [
+                {
+                    "id": "y",
+                    "premises": ["B"],
+                    "hypothesis": "B",
+                    "label": "consistent",
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    pw = list(datasets_mod.load_proofwriter())
+    rt = list(datasets_mod.load_ruletaker())
+    assert [e.id for e in pw] == ["x"]
+    assert [e.id for e in rt] == ["y"]
+
+
 def test_loader_reads_back_downloaded_json(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(datasets_mod, "_CACHE_ROOT", tmp_path)
     monkeypatch.setattr("datasets.load_dataset", _fake_load_dataset(_PROOFWRITER_FAKE))

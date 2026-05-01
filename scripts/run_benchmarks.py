@@ -67,6 +67,7 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="Split name. Defaults to 'validation' for proofwriter and 'dev' for ruletaker.",
     )
+    parser.add_argument("--depth", type=int, default=1)
     parser.add_argument("--max-examples", type=int, default=100)
     parser.add_argument("--shots", type=int, default=1024)
     parser.add_argument(
@@ -74,7 +75,7 @@ def main(argv: list[str] | None = None) -> int:
         type=Path,
         default=None,
         help="Optional explicit fixture/cache JSON path. Defaults to "
-        "~/.cache/qverify/datasets/<dataset>/<split>.json.",
+        "~/.cache/qverify/datasets/<dataset>/depth-<N>/<split>.json.",
     )
     parser.add_argument(
         "--output",
@@ -86,7 +87,14 @@ def main(argv: list[str] | None = None) -> int:
 
     loader = LOADERS[args.dataset]
     split = args.split or DEFAULT_SPLIT[args.dataset]
-    examples = list(loader(split=split, max_examples=args.max_examples, path=args.input_path))
+    examples = list(
+        loader(
+            split=split,
+            depth=args.depth,
+            max_examples=args.max_examples,
+            path=args.input_path,
+        )
+    )
     skipped_in_load = last_skip_count()
     _log.info(
         "Loaded %d examples for %s/%s (%d malformed records skipped)",

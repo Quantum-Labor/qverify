@@ -61,9 +61,13 @@ class DatasetExample:
     rendered_cnf: CNF | None = field(default=None)
 
 
-def _resolve_cache_path(dataset_name: str, split: str) -> Path:
-    """Return the conventional cache file for a (dataset, split) pair."""
-    return _CACHE_ROOT / dataset_name / f"{split}.json"
+def _resolve_cache_path(dataset_name: str, split: str, depth: int) -> Path:
+    """Return the conventional cache file for a (dataset, split, depth) triple.
+
+    Mirrors the layout written by the download functions:
+    ``<cache_root>/<dataset>/depth-<N>/<split>.json``.
+    """
+    return _CACHE_ROOT / dataset_name / f"depth-{depth}" / f"{split}.json"
 
 
 def _parse_rendered_cnf(raw: Any) -> CNF | None:
@@ -115,13 +119,14 @@ def _iter_records(
     split: str,
     path: Path | None,
     max_examples: int | None,
+    depth: int = 1,
 ) -> Iterator[DatasetExample]:
     """Yield examples from ``path`` or from the conventional cache location.
 
     Skips records that fail to decode and counts them in
     ``_iter_records.skipped`` (a function attribute so tests can read it).
     """
-    resolved = path if path is not None else _resolve_cache_path(dataset_name, split)
+    resolved = path if path is not None else _resolve_cache_path(dataset_name, split, depth)
     if not resolved.exists():
         raise FileNotFoundError(
             f"No cached fixture for {dataset_name}/{split} at {resolved}. "
@@ -155,17 +160,18 @@ def load_proofwriter(
     max_examples: int | None = None,
     path: Path | None = None,
 ) -> Iterator[DatasetExample]:
-    """Yield ProofWriter (CWA) examples. ``depth`` is informational here.
+    """Yield ProofWriter (CWA) examples.
 
     ProofWriter's dev split is named ``validation`` (the HF dataset card's
-    convention); RuleTaker uses ``dev``.
+    convention); RuleTaker uses ``dev``. ``depth`` selects the cache
+    subdirectory (``depth-<N>``) written by :func:`download_proofwriter`.
     """
-    del depth  # routed through the cache path by callers, no runtime filter
     yield from _iter_records(
         dataset_name="proofwriter",
         split=split,
         path=path,
         max_examples=max_examples,
+        depth=depth,
     )
 
 
@@ -176,13 +182,17 @@ def load_ruletaker(
     max_examples: int | None = None,
     path: Path | None = None,
 ) -> Iterator[DatasetExample]:
-    """Yield RuleTaker default-split examples."""
-    del depth
+    """Yield RuleTaker examples.
+
+    ``depth`` selects the cache subdirectory (``depth-<N>``) written by
+    :func:`download_ruletaker`.
+    """
     yield from _iter_records(
         dataset_name="ruletaker",
         split=split,
         path=path,
         max_examples=max_examples,
+        depth=depth,
     )
 
 
