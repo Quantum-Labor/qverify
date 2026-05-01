@@ -55,7 +55,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="QVerify benchmark runner")
     parser.add_argument("--dataset", required=True, choices=sorted(LOADERS.keys()))
     parser.add_argument("--backend", default="simulator", choices=("simulator", "ibm"))
-    parser.add_argument("--split", default="validation")
+    parser.add_argument("--split", default="dev")
     parser.add_argument("--max-examples", type=int, default=100)
     parser.add_argument("--shots", type=int, default=1024)
     parser.add_argument(

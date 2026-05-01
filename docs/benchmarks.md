@@ -31,8 +31,8 @@ v0.1 ships benchmarks against two datasets:
 
 | Dataset | Source | License | Split used |
 | --- | --- | --- | --- |
-| ProofWriter | [ProofWriter (Tafjord et al.)](https://allenai.org/data/proofwriter) | Apache 2.0 | CWA depth-1 validation |
-| RuleTaker | [RuleTaker (Clark et al.)](https://allenai.org/data/ruletaker) | CC BY 4.0 | default depth-1 validation |
+| ProofWriter | [ProofWriter (Tafjord et al.)](https://allenai.org/data/proofwriter) | Apache 2.0 | depth-1, dev split |
+| RuleTaker | [RuleTaker (Clark et al.)](https://allenai.org/data/ruletaker) | CC BY 4.0 | depth-1, dev split |
 
 Full attribution and citation details are in
 [../benchmarks/LICENSE-DATA.md](../benchmarks/LICENSE-DATA.md).

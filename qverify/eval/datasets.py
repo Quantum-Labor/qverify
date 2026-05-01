@@ -150,7 +150,7 @@ def _iter_records(
 
 def load_proofwriter(
     *,
-    split: str = "validation",
+    split: str = "dev",
     depth: int = 1,
     max_examples: int | None = None,
     path: Path | None = None,
@@ -167,7 +167,7 @@ def load_proofwriter(
 
 def load_ruletaker(
     *,
-    split: str = "validation",
+    split: str = "dev",
     depth: int = 1,
     max_examples: int | None = None,
     path: Path | None = None,
@@ -184,7 +184,7 @@ def load_ruletaker(
 
 def load_folio(
     *,
-    split: str = "validation",
+    split: str = "dev",
     max_examples: int | None = None,
     path: Path | None = None,
 ) -> Iterator[DatasetExample]:
@@ -352,7 +352,7 @@ def download_proofwriter(
     *,
     depth: int = 1,
     force: bool = False,
-    splits: tuple[str, ...] = ("train", "validation", "test"),
+    splits: tuple[str, ...] = ("train", "dev", "test"),
 ) -> Path:
     """Download ProofWriter (CWA) at the requested depth into the cache.
 
@@ -372,7 +372,7 @@ def download_ruletaker(
     *,
     depth: int = 1,
     force: bool = False,
-    splits: tuple[str, ...] = ("train", "validation", "test"),
+    splits: tuple[str, ...] = ("train", "dev", "test"),
 ) -> Path:
     """Download RuleTaker at the requested depth into the cache."""
     return _materialize(
