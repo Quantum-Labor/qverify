@@ -15,7 +15,7 @@ from __future__ import annotations
 
 import pytest
 
-from qverify.translator import CNF, Translator
+from qverify.translator import CNF, TranslationResult, Translator
 from qverify.translator.llm import GemmaE2BBackend
 from qverify.utils.models import TRANSLATOR_MODEL_ID
 
@@ -29,20 +29,53 @@ def translator() -> Translator:
 
 
 def test_atomic_statement_round_trip(translator: Translator) -> None:
-    cnf = translator.translate("The penguin is a bird.")
-    assert isinstance(cnf, CNF)
-    assert len(cnf.clauses) >= 1
-    assert any("penguin" in lit.args for cl in cnf.clauses for lit in cl.literals)
+    result = translator.translate("The penguin is a bird.")
+    assert isinstance(result, TranslationResult)
+    assert isinstance(result.cnf, CNF)
+    assert len(result.cnf.clauses) >= 1
+    assert any("penguin" in lit.args for cl in result.cnf.clauses for lit in cl.literals)
+    print(f"\nCNF: {result.cnf}")
+    print(f"Universe: {result.universe}")
 
 
 def test_universal_statement_round_trip(translator: Translator) -> None:
-    cnf = translator.translate("All birds can fly.")
-    assert isinstance(cnf, CNF)
-    assert len(cnf.clauses) >= 1
+    result = translator.translate("All birds can fly.")
+    assert isinstance(result, TranslationResult)
+    assert isinstance(result.cnf, CNF)
+    assert len(result.cnf.clauses) >= 1
     # A correct universal-implication encoding has at least one clause with
     # exactly one negative and one positive literal sharing a variable.
     has_implication_shape = any(
         len(cl.literals) == 2 and {lit.negated for lit in cl.literals} == {True, False}
-        for cl in cnf.clauses
+        for cl in result.cnf.clauses
     )
-    assert has_implication_shape, f"unexpected CNF shape: {cnf}"
+    assert has_implication_shape, f"unexpected CNF shape: {result.cnf}"
+    print(f"\nCNF: {result.cnf}")
+    print(f"Universe: {result.universe}")
+
+
+@pytest.mark.xfail(
+    reason="known: Gemma 4 E2B sometimes emits ungrounded variable names for universals",
+    strict=False,
+)
+def test_universal_statement_well_formed_args(translator: Translator) -> None:
+    """Stricter version of the universal-statement test: every literal arg must
+    be either a non-trivial identifier or a declared constant in the universe.
+
+    Gemma 4 E2B at this scale occasionally emits ``" x"`` (leading space) or
+    ``"_"`` as a variable name when grounding universals, which the translator
+    accepts as a literal arg even though downstream grounding cannot expand it.
+    Tracked here as xfail so the failure mode is visible without blocking CI.
+    """
+    result = translator.translate("All birds can fly.")
+    assert isinstance(result.cnf, CNF)
+    for cl in result.cnf.clauses:
+        for lit in cl.literals:
+            for arg in lit.args:
+                assert arg.strip() == arg, f"arg has surrounding whitespace: {arg!r}"
+                assert len(arg) >= 2 or arg in result.universe.constants, (
+                    f"single-character arg {arg!r} is not a declared constant in "
+                    f"universe {result.universe.constants}"
+                )
+    print(f"\nCNF: {result.cnf}")
+    print(f"Universe: {result.universe}")
