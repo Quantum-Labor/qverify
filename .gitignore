@@ -71,3 +71,4 @@ Thumbs.db
 # entry points like run_benchmarks.py are explicitly un-ignored below.
 scripts/*
 !scripts/run_benchmarks.py
+!scripts/download_datasets.py

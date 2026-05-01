@@ -50,6 +50,7 @@ dependencies = [
     "numpy<2.1",
     "pydantic>=2.9",
     "pydantic-settings>=2.6",
+    "datasets>=2.20",
 ]
 
 [project.optional-dependencies]

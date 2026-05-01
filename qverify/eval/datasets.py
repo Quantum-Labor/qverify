@@ -197,6 +197,170 @@ def load_folio(
     )
 
 
+_PROOFWRITER_HF_NAME = "tasksource/proofwriter"
+_RULETAKER_HF_NAME = "tasksource/ruletaker"
+
+
+def _download_root(dataset_name: str, depth: int) -> Path:
+    """Per-dataset cache root used by the download functions."""
+    return _CACHE_ROOT / dataset_name / f"depth-{depth}"
+
+
+def _label_from_truth(truth: Any) -> DatasetLabel | None:
+    """Map a HuggingFace dataset's truth field to the two-class label.
+
+    True / "True" / 1 -> consistent (hypothesis follows from premises).
+    False / "False" / 0 -> inconsistent.
+    Anything else (Unknown, None, NaN) -> None, signalling "drop".
+    """
+    if isinstance(truth, bool):
+        return "consistent" if truth else "inconsistent"
+    if isinstance(truth, int) and truth in (0, 1):
+        return "consistent" if truth == 1 else "inconsistent"
+    if isinstance(truth, str):
+        normalized = truth.strip().lower()
+        if normalized in ("true", "yes", "entail", "entails", "entailed"):
+            return "consistent"
+        if normalized in ("false", "no", "contradict", "contradicts"):
+            return "inconsistent"
+    return None
+
+
+def _split_theory_into_premises(theory: str) -> list[str]:
+    """Split a ProofWriter/RuleTaker `theory` string into individual premises."""
+    if not theory:
+        return []
+    parts = [p.strip() for p in theory.replace("\n", " ").split(".")]
+    return [p + "." for p in parts if p]
+
+
+def _hf_record_to_examples(
+    record: dict[str, Any], example_prefix: str, source: str
+) -> list[dict[str, Any]]:
+    """Convert one HF record into zero or more fixture-shaped example dicts.
+
+    ProofWriter and RuleTaker share the same shape: a `theory` string plus a
+    `questions` list whose entries each carry `text` and a truth label
+    (`label` or `answer` depending on the configuration).
+    """
+    theory = record.get("theory") or record.get("context") or ""
+    premises = _split_theory_into_premises(theory)
+    questions = record.get("questions") or []
+
+    out: list[dict[str, Any]] = []
+    for q_idx, question in enumerate(questions):
+        if not isinstance(question, dict):
+            continue
+        hypothesis = question.get("text") or question.get("question") or ""
+        truth = question.get("label", question.get("answer"))
+        label = _label_from_truth(truth)
+        if label is None:
+            continue
+        qid = question.get("id") or f"{example_prefix}_q{q_idx}"
+        out.append(
+            {
+                "id": str(qid),
+                "premises": premises,
+                "hypothesis": hypothesis,
+                "label": label,
+                "source": source,
+            }
+        )
+    return out
+
+
+def _materialize(
+    *,
+    dataset_name: str,
+    hf_name: str,
+    config_name: str,
+    splits: tuple[str, ...],
+    depth: int,
+    force: bool,
+) -> Path:
+    """Download a HuggingFace dataset and write per-split JSON files."""
+    cache_dir = _download_root(dataset_name, depth)
+    cache_dir.mkdir(parents=True, exist_ok=True)
+
+    if not force:
+        existing = [cache_dir / f"{s}.json" for s in splits]
+        if all(p.exists() for p in existing):
+            return cache_dir
+
+    try:
+        from datasets import load_dataset
+    except ImportError as exc:
+        raise RuntimeError(
+            "The `datasets` package is required for downloads. "
+            "Install with `pip install datasets>=2.20`."
+        ) from exc
+
+    for split in splits:
+        try:
+            ds = load_dataset(hf_name, config_name, split=split)
+        except Exception as exc:
+            raise RuntimeError(
+                f"Failed to load {hf_name}/{config_name} split={split}: {exc}"
+            ) from exc
+
+        records: list[dict[str, Any]] = []
+        for i, raw in enumerate(ds):
+            assert isinstance(raw, dict)
+            prefix = f"{dataset_name}_{split}_{i}"
+            records.extend(_hf_record_to_examples(raw, prefix, source=dataset_name))
+
+        out_path = cache_dir / f"{split}.json"
+        out_path.write_text(json.dumps(records, indent=2), encoding="utf-8")
+
+    return cache_dir
+
+
+def download_proofwriter(
+    *,
+    depth: int = 1,
+    force: bool = False,
+    splits: tuple[str, ...] = ("train", "validation", "test"),
+) -> Path:
+    """Download ProofWriter (CWA) at the requested depth into the cache.
+
+    Returns the cache directory path. ``force=True`` re-downloads even if
+    JSON files for every requested split already exist.
+    """
+    return _materialize(
+        dataset_name="proofwriter",
+        hf_name=_PROOFWRITER_HF_NAME,
+        config_name=f"CWA_depth-{depth}",
+        splits=splits,
+        depth=depth,
+        force=force,
+    )
+
+
+def download_ruletaker(
+    *,
+    depth: int = 1,
+    force: bool = False,
+    splits: tuple[str, ...] = ("train", "validation", "test"),
+) -> Path:
+    """Download RuleTaker at the requested depth into the cache."""
+    return _materialize(
+        dataset_name="ruletaker",
+        hf_name=_RULETAKER_HF_NAME,
+        config_name=f"depth-{depth}",
+        splits=splits,
+        depth=depth,
+        force=force,
+    )
+
+
+def download_all(*, depth: int = 1, force: bool = False) -> dict[str, Path]:
+    """Download both ProofWriter and RuleTaker."""
+    return {
+        "proofwriter": download_proofwriter(depth=depth, force=force),
+        "ruletaker": download_ruletaker(depth=depth, force=force),
+    }
+
+
 def last_skip_count() -> int:
     """Return the skip count from the most recent loader call.
 
