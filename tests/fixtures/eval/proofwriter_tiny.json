@@ -32,7 +32,7 @@
     "source": "proofwriter",
     "rendered_cnf": {
       "clauses": [
-        [{"predicate": "Cat", "args": ["tom"], "negated": false}]
+        [{"predicate": "Cat", "args": ["Tom"], "negated": false}]
       ]
     }
   },

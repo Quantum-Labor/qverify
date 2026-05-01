@@ -19,8 +19,8 @@
     "source": "folio",
     "rendered_cnf": {
       "clauses": [
-        [{"predicate": "P", "args": ["a"], "negated": false}],
-        [{"predicate": "P", "args": ["a"], "negated": true}]
+        [{"predicate": "P", "args": ["Alice"], "negated": false}],
+        [{"predicate": "P", "args": ["Alice"], "negated": true}]
       ]
     }
   }
