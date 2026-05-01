@@ -66,6 +66,9 @@ def evaluate(
     results: list[ExampleResult] = []
     n_skipped = 0
     n_processed = 0
+    n_translated = 0
+    n_translation_failed = 0
+    translation_seconds_total = 0.0
 
     for example in examples:
         if max_examples is not None and n_processed >= max_examples:
@@ -77,12 +80,16 @@ def evaluate(
                 _log.info("Skipping %s: no rendered_cnf and no translate fn provided", example.id)
                 n_skipped += 1
                 continue
+            t0 = time.monotonic()
             try:
                 cnf = translate(example)
             except Exception as exc:
                 _log.info("Skipping %s: translate failed (%s)", example.id, exc)
+                n_translation_failed += 1
                 n_skipped += 1
                 continue
+            translation_seconds_total += time.monotonic() - t0
+            n_translated += 1
 
         try:
             oracle_sat = pysat_satisfies(cnf)
@@ -116,9 +123,14 @@ def evaluate(
         )
         n_processed += 1
 
+    avg_translation = translation_seconds_total / n_translated if n_translated > 0 else 0.0
+
     return build_report(
         dataset=dataset,
         backend=backend.name,
         results=results,
+        n_translated=n_translated,
+        n_translation_failed=n_translation_failed,
+        avg_translation_seconds=avg_translation,
         n_skipped=n_skipped,
     )

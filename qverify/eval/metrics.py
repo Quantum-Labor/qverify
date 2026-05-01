@@ -42,6 +42,9 @@ class DatasetReport(BaseModel):
     accuracy: float = Field(..., ge=0.0, le=1.0)
     avg_seconds: float = Field(..., ge=0.0)
     p95_seconds: float = Field(..., ge=0.0)
+    n_translated: int = Field(default=0, ge=0)
+    n_translation_failed: int = Field(default=0, ge=0)
+    avg_translation_seconds: float = Field(default=0.0, ge=0.0)
     results: tuple[ExampleResult, ...] = Field(default_factory=tuple)
 
 
@@ -51,6 +54,9 @@ def build_report(
     backend: str,
     results: Iterable[ExampleResult],
     n_skipped: int,
+    n_translated: int = 0,
+    n_translation_failed: int = 0,
+    avg_translation_seconds: float = 0.0,
 ) -> DatasetReport:
     """Aggregate per-example results into a :class:`DatasetReport`."""
     results_tuple = tuple(results)
@@ -64,6 +70,9 @@ def build_report(
             accuracy=0.0,
             avg_seconds=0.0,
             p95_seconds=0.0,
+            n_translated=n_translated,
+            n_translation_failed=n_translation_failed,
+            avg_translation_seconds=avg_translation_seconds,
             results=(),
         )
     accuracy = sum(1 for r in results_tuple if r.agrees) / n
@@ -80,5 +89,8 @@ def build_report(
         accuracy=accuracy,
         avg_seconds=avg,
         p95_seconds=p95,
+        n_translated=n_translated,
+        n_translation_failed=n_translation_failed,
+        avg_translation_seconds=avg_translation_seconds,
         results=results_tuple,
     )
