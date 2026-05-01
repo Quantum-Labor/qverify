@@ -639,7 +639,8 @@ with gr.Blocks(title="QVerify") as demo:
         "### IBM Hardware Jobs\n\n"
         "Job execution happens on IBM Quantum hardware. After clicking "
         "**Verify on IBM Heron r2**, copy the Job ID from the Result and "
-        "view live status at the [IBM Quantum Workloads dashboard](https://quantum.cloud.ibm.com/workloads). "
+        "view live status at the "
+        "[IBM Quantum Workloads dashboard](https://quantum.cloud.ibm.com/workloads). "
         "All jobs are publicly verifiable there."
     )
     gr.Markdown("---")

@@ -5,6 +5,10 @@
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Built with Gemma 4](https://img.shields.io/badge/Built%20with-Gemma%204-4285F4)](https://ai.google.dev/gemma)
 
+> ✓ **Verified on real quantum hardware**
+> Backend: `ibm_fez` (IBM Heron r2, 156 qubits) · Job ID: [`d7q961poagoc73fj6oag`](https://quantum.ibm.com/jobs/d7q961poagoc73fj6oag)
+> Date: 2026-05-01 · Shots: 1024 · Transpiled depth: 360 · Result: formula consistent (3/4 satisfying assignments found)
+
 QVerify checks logical reasoning steps from large language models using Grover's
 search on a quantum simulator and on real IBM quantum hardware. Each reasoning
 step is translated into a propositional logic formula, grounded in a finite

@@ -50,3 +50,44 @@ If `IBM_QUANTUM_TOKEN` or `IBM_QUANTUM_INSTANCE` is missing, the test is skipped
 - The simulator stays the default for `verify()`. Hardware is strictly opt-in.
 - Heron-class backends only; older Eagle r3 devices are not in the filter.
 - Job submission blocks until completion. Asynchronous job tracking is out of scope for v0.1.
+
+## Saturated formulas on noisy hardware
+
+Grover's algorithm amplifies the marked subspace by a factor proportional to
+`√(N/M)`, where `N = 2^n` is the search space size and `M` is the number of
+satisfying assignments. When `M ≥ N/2` (a saturated formula), the amplification
+is small or negligible: the algorithm cannot meaningfully concentrate amplitude
+on any single bitstring because the satisfying set already covers most of the
+search space.
+
+On noisy hardware, gate errors and decoherence further flatten the output
+distribution. The combined effect is that the measured histogram for a
+saturated formula is near-uniform: the most-frequent bitstring is essentially
+random with respect to satisfaction, and reading the answer off the top
+measurement alone is unreliable.
+
+The classical post-check in [qverify/verifier/grover.py](../qverify/verifier/grover.py)
+walks `Counter.most_common()` until it finds a bitstring that classically
+satisfies the CNF. This walk is the safeguard for saturated formulas on
+hardware: as long as a satisfier appears anywhere in the measured set, the
+verifier classifies the formula correctly regardless of which bitstring
+happened to top the histogram.
+
+### Concrete observed example
+
+Job `d7q961poagoc73fj6oag` on `ibm_fez` (2026-05-01) ran the CNF
+`(P ∨ Q) ∧ (¬P ∨ Q)`, which has 3 satisfying assignments out of 4 (only
+`P=False, Q=False` falsifies it). Top measurements:
+
+| Bitstring | Count |
+| --- | --- |
+| `00` | 292 |
+| `01` | 263 |
+| `11` | 254 |
+| `10` | 215 |
+
+The histogram is almost uniform, as the saturation analysis predicts. The
+most-frequent bitstring `00` is the unique non-satisfier. The classical
+post-check skipped it, found a satisfier at the next rank, and the verifier
+correctly classified the formula as consistent (`contradiction_found=False`)
+in consistency mode.
