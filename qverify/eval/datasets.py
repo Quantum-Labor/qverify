@@ -30,6 +30,7 @@ translator (and therefore the GPU). Phase 6 ships fixtures with
 from __future__ import annotations
 
 import json
+import re
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -242,9 +243,9 @@ def _label_from_truth(truth: Any) -> DatasetLabel | None:
         return "consistent" if truth == 1 else "inconsistent"
     if isinstance(truth, str):
         normalized = truth.strip().lower()
-        if normalized in ("true", "yes", "entail", "entails", "entailed"):
+        if normalized in ("true", "yes", "entail", "entails", "entailed", "entailment"):
             return "consistent"
-        if normalized in ("false", "no", "contradict", "contradicts"):
+        if normalized in ("false", "no", "contradict", "contradicts", "contradiction"):
             return "inconsistent"
     return None
 
@@ -262,48 +263,96 @@ def _hf_record_to_examples(
 ) -> list[dict[str, Any]]:
     """Convert one HF record into zero or more fixture-shaped example dicts.
 
-    ProofWriter and RuleTaker share the same shape: a `theory` string plus a
-    `questions` list whose entries each carry `text` and a truth label
-    (`label` or `answer` depending on the configuration).
+    Two shapes are supported:
+
+    - ProofWriter: a ``theory`` string plus a ``questions`` list, each
+      entry carrying ``text`` and a truth ``label``/``answer``.
+    - RuleTaker (tasksource publication): one record per question with a
+      top-level ``context`` string, ``question`` string, and ``label``.
     """
     theory = record.get("theory") or record.get("context") or ""
     premises = _split_theory_into_premises(theory)
     questions = record.get("questions") or []
 
     out: list[dict[str, Any]] = []
-    for q_idx, question in enumerate(questions):
-        if not isinstance(question, dict):
-            continue
-        hypothesis = question.get("text") or question.get("question") or ""
-        truth = question.get("label", question.get("answer"))
-        label = _label_from_truth(truth)
-        if label is None:
-            continue
-        qid = question.get("id") or f"{example_prefix}_q{q_idx}"
-        out.append(
-            {
-                "id": str(qid),
-                "premises": premises,
-                "hypothesis": hypothesis,
-                "label": label,
-                "source": source,
-            }
-        )
+
+    if questions:
+        for q_idx, question in enumerate(questions):
+            if not isinstance(question, dict):
+                continue
+            hypothesis = question.get("text") or question.get("question") or ""
+            truth = question.get("label", question.get("answer"))
+            label = _label_from_truth(truth)
+            if label is None:
+                continue
+            qid = question.get("id") or f"{example_prefix}_q{q_idx}"
+            out.append(
+                {
+                    "id": str(qid),
+                    "premises": premises,
+                    "hypothesis": hypothesis,
+                    "label": label,
+                    "source": source,
+                }
+            )
+        return out
+
+    # Singular-question shape: the record itself is one example.
+    hypothesis = record.get("question") or record.get("hypothesis") or ""
+    if not hypothesis:
+        return out
+    truth = record.get("label", record.get("answer"))
+    label = _label_from_truth(truth)
+    if label is None:
+        return out
+    rid = record.get("id") or example_prefix
+    out.append(
+        {
+            "id": str(rid),
+            "premises": premises,
+            "hypothesis": hypothesis,
+            "label": label,
+            "source": source,
+        }
+    )
     return out
 
 
-_DEPTH_FIELDS: tuple[str, ...] = ("QDep", "depth", "Depth", "qdep")
+_DEPTH_FIELDS: tuple[str, ...] = ("QDep", "depth", "Depth", "qdep", "config")
+"""Record fields the loader inspects to recover an example's depth.
+
+ProofWriter exposes integer depth in ``QDep``/``depth``; RuleTaker
+exposes a string ``config`` of the form ``"depth-1"``, ``"depth-2"``,
+etc. The first field whose value parses cleanly wins.
+"""
+
+_DEPTH_STRING_RE = re.compile(r"^\s*depth[-_]?(\d+)\s*$", re.IGNORECASE)
 
 
 def _record_depth(record: dict[str, Any]) -> int | None:
-    """Extract a depth indicator from a record, if present."""
+    """Extract a depth indicator from a record, if present.
+
+    Returns the parsed integer when one of :data:`_DEPTH_FIELDS` carries
+    either a numeric value or a string of the form ``"depth-N"``. Returns
+    ``None`` if no usable field is present so the caller accepts the
+    record unconditionally.
+    """
     for key in _DEPTH_FIELDS:
-        if key in record:
-            value = record[key]
-            try:
-                return int(value)
-            except (TypeError, ValueError):
-                continue
+        if key not in record:
+            continue
+        value = record[key]
+        if isinstance(value, str):
+            match = _DEPTH_STRING_RE.match(value)
+            if match is not None:
+                return int(match.group(1))
+            stripped = value.strip()
+            if stripped.isdigit():
+                return int(stripped)
+            continue
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            continue
     return None
 
 

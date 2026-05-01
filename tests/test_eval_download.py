@@ -207,6 +207,63 @@ def test_download_filters_records_by_depth_field(
     assert ids == ["d1q0", "ndq0"]
 
 
+def test_record_depth_parses_config_string() -> None:
+    from qverify.eval.datasets import _record_depth
+
+    assert _record_depth({"config": "depth-1"}) == 1
+    assert _record_depth({"config": "depth-5"}) == 5
+    assert _record_depth({"config": "DEPTH_3"}) == 3
+    # Numeric fields still work
+    assert _record_depth({"QDep": 2}) == 2
+    assert _record_depth({"depth": "4"}) == 4
+    # Unparseable string -> None (caller accepts the record)
+    assert _record_depth({"config": "garbage"}) is None
+    # No depth field at all -> None
+    assert _record_depth({"context": "x"}) is None
+
+
+def test_download_filters_ruletaker_by_config_field(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(datasets_mod, "_CACHE_ROOT", tmp_path)
+    rt_records = {
+        "train": [
+            {
+                "id": "r1",
+                "context": "A.",
+                "question": "A.",
+                "label": "entailment",
+                "config": "depth-1",
+            },
+            {
+                "id": "r2",
+                "context": "B.",
+                "question": "B.",
+                "label": "contradiction",
+                "config": "depth-3",
+            },
+            {
+                "id": "r3",
+                "context": "C.",
+                "question": "C.",
+                "label": "entailment",
+                "config": "depth-1",
+            },
+        ],
+        "dev": [],
+        "test": [],
+    }
+    monkeypatch.setattr("datasets.load_dataset", _fake_load_dataset(rt_records))
+
+    cache_dir = datasets_mod.download_ruletaker(depth=1)
+    train = json.loads((cache_dir / "train.json").read_text(encoding="utf-8"))
+    ids = sorted(r["id"] for r in train)
+    assert ids == ["r1", "r3"]
+    # Singular-question shape produces one example per record
+    assert all(rec["hypothesis"] for rec in train)
+    assert {rec["label"] for rec in train} == {"consistent"}
+
+
 def test_loader_default_path_resolves_under_depth_subdir(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
