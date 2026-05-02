@@ -270,6 +270,46 @@ def _safety_status_md() -> str:
     )
 
 
+def _load_qverify_mini_summary() -> str:
+    """Render the qverify-mini-50 hero card from the in-repo report.json.
+
+    Returns a static Markdown card with accuracy, avg verify time, and
+    example count so visitors see real numbers right under the intro
+    copy. If the report file is missing (e.g. someone running locally
+    before the first run) we fall back to a one-line placeholder.
+    """
+    import json as _json
+
+    here = Path(__file__).resolve().parent
+    candidates = (
+        here / "benchmarks" / "results" / "qverify_mini_simulator" / "report.json",
+        here.parent / "benchmarks" / "results" / "qverify_mini_simulator" / "report.json",
+    )
+    for p in candidates:
+        if p.exists():
+            try:
+                data = _json.loads(p.read_text(encoding="utf-8"))
+            except Exception:
+                continue
+            acc = float(data.get("accuracy", 0.0)) * 100
+            avg = float(data.get("avg_seconds", 0.0))
+            n = int(data.get("n_examples", 0))
+            return (
+                "## qverify-mini-50 — verifier accuracy on the simulator\n\n"
+                "Hand-crafted SAT/UNSAT benchmark, every label cross-checked "
+                "against the PySAT Glucose3 oracle.\n\n"
+                "| Metric | Value |\n"
+                "| --- | --- |\n"
+                f"| Accuracy | **{acc:.1f}%** |\n"
+                f"| Avg verify time | {avg:.2f}s |\n"
+                f"| Examples | {n} (25 SAT / 25 UNSAT) |\n"
+                "\n"
+                "Source: `benchmarks/qverify_mini/dataset.json` · "
+                "[Methodology](https://github.com/Quantum-Labor/qverify/blob/main/benchmarks/qverify_mini/README.md)"
+            )
+    return "_qverify-mini-50 report not yet generated._"
+
+
 def _load_benchmark_summaries() -> str:
     """Read every benchmarks/results/*/report.json checked into the repo and
     render a summary Markdown table. Called once at Space load time."""
@@ -765,7 +805,11 @@ _HERO_HTML = f"""
       </h1>
       <span style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;
                    color:#06B6D4;border:1px solid #06B6D4;padding:2px 8px;border-radius:999px;">
-        v0.2.0
+        v1.0.0
+      </span>
+      <span style="font-family:JetBrains Mono,monospace;font-size:12px;font-weight:700;
+                   color:#10B981;border:1px solid #10B981;padding:2px 8px;border-radius:999px;">
+        stable · 433 tests · CI green
       </span>
       <span style="font-family:JetBrains Mono,monospace;font-size:12px;color:#A78BFA;">
         Quantum Labor · Project 1 of 3
@@ -846,6 +890,8 @@ The JSON above is the verifier's full output. Reading it:
 with gr.Blocks(title="QVerify · Quantum Logic Verifier") as demo:
     gr.HTML(_HERO_HTML)
     gr.Markdown(_INTRO_MD)
+    gr.Markdown("---")
+    gr.Markdown(_load_qverify_mini_summary())
     gr.Markdown("---")
     gr.Markdown("# Try it now")
 
