@@ -100,17 +100,26 @@ def _parse_rendered_cnf(raw: Any) -> CNF | None:
 
 
 def _coerce_example(record: dict[str, Any], default_source: str) -> DatasetExample:
-    """Decode one record dict into a :class:`DatasetExample`. Raises on bad records."""
+    """Decode one record dict into a :class:`DatasetExample`. Raises on bad records.
+
+    ``premises`` and ``hypothesis`` are optional: hand-crafted benchmarks
+    (qverify-mini) ship a pre-rendered CNF and have no natural-language
+    text, so we default both to empty when missing.
+    """
     label = record["label"]
     if label not in ("consistent", "inconsistent"):
         raise ValueError(f"label must be 'consistent' or 'inconsistent', got {label!r}")
+    rendered = _parse_rendered_cnf(record.get("rendered_cnf"))
+    has_text_pair = "premises" in record and "hypothesis" in record
+    if rendered is None and not has_text_pair:
+        raise ValueError("record must carry either premises+hypothesis or a rendered_cnf")
     return DatasetExample(
         id=str(record["id"]),
-        premises=tuple(record["premises"]),
-        hypothesis=str(record["hypothesis"]),
+        premises=tuple(record.get("premises", ())),
+        hypothesis=str(record.get("hypothesis", "")),
         label=label,
         source=str(record.get("source", default_source)),
-        rendered_cnf=_parse_rendered_cnf(record.get("rendered_cnf")),
+        rendered_cnf=rendered,
     )
 
 
@@ -194,6 +203,34 @@ def load_ruletaker(
         path=path,
         max_examples=max_examples,
         depth=depth,
+    )
+
+
+_QVERIFY_MINI_DEFAULT = Path("benchmarks") / "qverify_mini" / "dataset.json"
+
+
+def load_qverify_mini(
+    *,
+    split: str = "all",
+    depth: int = 1,
+    max_examples: int | None = None,
+    path: Path | None = None,
+) -> Iterator[DatasetExample]:
+    """Yield examples from the hand-crafted qverify-mini-50 benchmark.
+
+    Unlike ProofWriter / RuleTaker the dataset ships in-repo at
+    ``benchmarks/qverify_mini/dataset.json`` and every record carries a
+    ``rendered_cnf``, so the verifier runs without a translator. ``split``
+    and ``depth`` are accepted for API parity with the other loaders but
+    have no effect (one split, no depth dimension).
+    """
+    del split, depth  # one split — the entire 50-example set
+    resolved = path if path is not None else _QVERIFY_MINI_DEFAULT
+    yield from _iter_records(
+        dataset_name="qverify_mini",
+        split="all",
+        path=resolved,
+        max_examples=max_examples,
     )
 
 

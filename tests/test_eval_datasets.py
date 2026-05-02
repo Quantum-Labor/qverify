@@ -70,6 +70,18 @@ def test_load_ruletaker_yields_examples() -> None:
     assert examples[0].source == "ruletaker"
 
 
+def test_load_qverify_mini_yields_50_examples() -> None:
+    from qverify.eval.datasets import load_qverify_mini
+
+    examples = list(load_qverify_mini())
+    assert len(examples) == 50
+    n_consistent = sum(1 for e in examples if e.label == "consistent")
+    n_inconsistent = sum(1 for e in examples if e.label == "inconsistent")
+    assert n_consistent == 25
+    assert n_inconsistent == 25
+    assert all(e.rendered_cnf is not None for e in examples)
+
+
 def test_load_folio_raises_not_implemented() -> None:
     with pytest.raises(NotImplementedError, match="CC BY-SA"):
         list(load_folio())

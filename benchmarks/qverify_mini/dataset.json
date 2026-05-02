@@ -1,0 +1,2433 @@
+[
+  {
+    "id": "a01",
+    "description": "Single positive atom P",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 1
+  },
+  {
+    "id": "a02",
+    "description": "Single negative atom \u00acP",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 1
+  },
+  {
+    "id": "a03",
+    "description": "Direct contradiction P \u2227 \u00acP",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 1
+  },
+  {
+    "id": "a04",
+    "description": "Disjunction P \u2228 Q",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "a05",
+    "description": "Force false: \u00acP \u2227 \u00acQ \u2227 (P \u2228 Q)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "a06",
+    "description": "Conjunction P \u2227 Q",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "a07",
+    "description": "Both true but at-most-one: P \u2227 Q \u2227 (\u00acP \u2228 \u00acQ)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "a08",
+    "description": "XOR plus equivalence: 4-clause UNSAT",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "b01",
+    "description": "Modus ponens premise: (\u00acP \u2228 Q) \u2227 P",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "b02",
+    "description": "Modus ponens contradiction: above \u2227 \u00acQ",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "b03",
+    "description": "Two-step MP chain: (\u00acP \u2228 Q) \u2227 (\u00acQ \u2228 R) \u2227 P",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "b04",
+    "description": "Two-step MP contradiction: above \u2227 \u00acR",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "b05",
+    "description": "Modus tollens setup: (\u00acP \u2228 Q) \u2227 \u00acQ (forces \u00acP)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "b06",
+    "description": "Modus tollens contradiction: above \u2227 P",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "c01",
+    "description": "Three-step chain SAT: (\u00acA\u2228B)\u2227(\u00acB\u2228C)\u2227(\u00acC\u2228D)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "A",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "B",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "B",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "C",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "C",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "D",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 4
+  },
+  {
+    "id": "c02",
+    "description": "Three-step chain UNSAT: above \u2227 A \u2227 \u00acD",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "A",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "B",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "B",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "C",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "C",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "D",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "A",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "D",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 4
+  },
+  {
+    "id": "c03",
+    "description": "Redundant transitivity: (\u00acA\u2228B)\u2227(\u00acB\u2228C)\u2227(\u00acA\u2228C)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "A",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "B",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "B",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "C",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "A",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "C",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "c04",
+    "description": "Transitive trigger: (\u00acA\u2228B)\u2227(\u00acB\u2228C)\u2227A",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "A",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "B",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "B",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "C",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "A",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "c05",
+    "description": "Transitive contradiction: above \u2227 \u00acC",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "A",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "B",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "B",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "C",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "A",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "C",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "c06",
+    "description": "Cyclic implications: (\u00acA\u2228B)\u2227(\u00acB\u2228A)\u2227A",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "A",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "B",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "B",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "A",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "A",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "d01",
+    "description": "Resolves Q: (P\u2228Q) \u2227 (\u00acP\u2228Q)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "d02",
+    "description": "Resolution UNSAT: above \u2227 \u00acQ",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "d03",
+    "description": "Resolves P: (P\u2228Q) \u2227 (P\u2228\u00acQ)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "d04",
+    "description": "Resolution UNSAT: above \u2227 \u00acP",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "d05",
+    "description": "Three-clause resolution SAT",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "d06",
+    "description": "Four-corner UNSAT (full XOR contradiction)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "e01",
+    "description": "2-pigeon-1-hole UNSAT (each pigeon needs a hole, but only one hole)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P1H1",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P2H1",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P1H1",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P2H1",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "e02",
+    "description": "2-pigeon-2-hole SAT (place pigeons in distinct holes)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P1H1",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "P1H2",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P2H1",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "P2H2",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P1H1",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P2H1",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P1H2",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P2H2",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 4
+  },
+  {
+    "id": "e03",
+    "description": "3-pigeon-2-hole UNSAT (classic pigeonhole)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P1H1",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "P1H2",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P2H1",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "P2H2",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P3H1",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "P3H2",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P1H1",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P2H1",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P1H1",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P3H1",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P2H1",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P3H1",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P1H2",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P2H2",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P1H2",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P3H2",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P2H2",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P3H2",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 6
+  },
+  {
+    "id": "e04",
+    "description": "3-pigeon-3-hole SAT (a perfect matching exists)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P1H1",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "P1H2",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "P1H3",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P2H1",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "P2H2",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "P2H3",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P3H1",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "P3H2",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "P3H3",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P1H1",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P2H1",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P1H1",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P3H1",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P2H1",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P3H1",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P1H2",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P2H2",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P1H2",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P3H2",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P2H2",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P3H2",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P1H3",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P2H3",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P1H3",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P3H3",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P2H3",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "P3H3",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 9
+  },
+  {
+    "id": "f01",
+    "description": "Cat(Tom)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "Cat",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 1
+  },
+  {
+    "id": "f02",
+    "description": "Cat(Tom) \u2227 \u00acCat(Tom)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "Cat",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Cat",
+            "args": [
+              "Tom"
+            ],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 1
+  },
+  {
+    "id": "f03",
+    "description": "Cat(Tom) \u2227 HasFur(Tom)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "Cat",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "HasFur",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "f04",
+    "description": "Modus ponens grounded: (\u00acCat(Tom) \u2228 HasFur(Tom)) \u2227 Cat(Tom)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "Cat",
+            "args": [
+              "Tom"
+            ],
+            "negated": true
+          },
+          {
+            "predicate": "HasFur",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Cat",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "f05",
+    "description": "Grounded MP UNSAT: above \u2227 \u00acHasFur(Tom)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "Cat",
+            "args": [
+              "Tom"
+            ],
+            "negated": true
+          },
+          {
+            "predicate": "HasFur",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Cat",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "HasFur",
+            "args": [
+              "Tom"
+            ],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "f06",
+    "description": "Two birds, one negated: Bird(Robin) \u2227 Bird(Tweety) \u2227 \u00acBird(Tweety)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "Bird",
+            "args": [
+              "Robin"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Bird",
+            "args": [
+              "Tweety"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Bird",
+            "args": [
+              "Tweety"
+            ],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 2
+  },
+  {
+    "id": "f07",
+    "description": "Universal grounded over 2 constants \u2014 SAT",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "Bird",
+            "args": [
+              "Robin"
+            ],
+            "negated": true
+          },
+          {
+            "predicate": "Flies",
+            "args": [
+              "Robin"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Bird",
+            "args": [
+              "Tweety"
+            ],
+            "negated": true
+          },
+          {
+            "predicate": "Flies",
+            "args": [
+              "Tweety"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Bird",
+            "args": [
+              "Robin"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Bird",
+            "args": [
+              "Tweety"
+            ],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 4
+  },
+  {
+    "id": "f08",
+    "description": "Above + \u00acFlies(Tweety) \u2014 UNSAT",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "Bird",
+            "args": [
+              "Robin"
+            ],
+            "negated": true
+          },
+          {
+            "predicate": "Flies",
+            "args": [
+              "Robin"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Bird",
+            "args": [
+              "Tweety"
+            ],
+            "negated": true
+          },
+          {
+            "predicate": "Flies",
+            "args": [
+              "Tweety"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Bird",
+            "args": [
+              "Robin"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Bird",
+            "args": [
+              "Tweety"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Flies",
+            "args": [
+              "Tweety"
+            ],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 4
+  },
+  {
+    "id": "f09",
+    "description": "Three-step grounded chain SAT",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "Cat",
+            "args": [
+              "Tom"
+            ],
+            "negated": true
+          },
+          {
+            "predicate": "Animal",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Animal",
+            "args": [
+              "Tom"
+            ],
+            "negated": true
+          },
+          {
+            "predicate": "Mortal",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Cat",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "f10",
+    "description": "Three-step grounded chain UNSAT",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "Cat",
+            "args": [
+              "Tom"
+            ],
+            "negated": true
+          },
+          {
+            "predicate": "Animal",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Animal",
+            "args": [
+              "Tom"
+            ],
+            "negated": true
+          },
+          {
+            "predicate": "Mortal",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Cat",
+            "args": [
+              "Tom"
+            ],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Mortal",
+            "args": [
+              "Tom"
+            ],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "g01",
+    "description": "Three-way OR with two negated: (P\u2228Q\u2228R) \u2227 \u00acP \u2227 \u00acQ",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "g02",
+    "description": "Above with all negated: UNSAT",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "g03",
+    "description": "Two-pair OR with at-most-one cross: (P\u2228Q)\u2227(R\u2228S)\u2227(\u00acP\u2228\u00acR)",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "S",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 4
+  },
+  {
+    "id": "g04",
+    "description": "Three asserted, three-clause exclusion UNSAT",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "g05",
+    "description": "At-most-one of {P,Q,R}",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "g06",
+    "description": "Exactly-one of {P,Q,R}: at-most-1 + at-least-1",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "consistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "g07",
+    "description": "Exactly-one of {P,Q,R} but force two true: UNSAT",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 3
+  },
+  {
+    "id": "g08",
+    "description": "Six-atom forced inconsistency: cover all six and refute their conjunction",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "S",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "T",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "U",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "U",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 6
+  },
+  {
+    "id": "g09",
+    "description": "Six-atom UNSAT",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "S",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "T",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "U",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "S",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "T",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "U",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 6
+  },
+  {
+    "id": "g10",
+    "description": "Five-atom resolution UNSAT",
+    "rendered_cnf": {
+      "clauses": [
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": false
+          },
+          {
+            "predicate": "Q",
+            "args": [],
+            "negated": true
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": false
+          }
+        ],
+        [
+          {
+            "predicate": "P",
+            "args": [],
+            "negated": true
+          },
+          {
+            "predicate": "R",
+            "args": [],
+            "negated": true
+          }
+        ]
+      ]
+    },
+    "label": "inconsistent",
+    "mode": "consistency",
+    "atom_count": 3
+  }
+]

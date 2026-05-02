@@ -9,6 +9,7 @@ from qverify.eval.datasets import (
     last_skip_count,
     load_folio,
     load_proofwriter,
+    load_qverify_mini,
     load_ruletaker,
 )
 from qverify.eval.metrics import DatasetReport, ExampleResult, build_report
@@ -28,6 +29,7 @@ __all__ = [
     "last_skip_count",
     "load_folio",
     "load_proofwriter",
+    "load_qverify_mini",
     "load_ruletaker",
     "pysat_satisfies",
 ]

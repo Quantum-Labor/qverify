@@ -24,7 +24,7 @@ premises.
   [`d7q961poagoc73fj6oag`](https://quantum.ibm.com/jobs/d7q961poagoc73fj6oag)
   on `ibm_fez` (156 qubits) — see [Hardware run](#hardware-run) for the
   full reproducibility record.
-- **432 unit tests, CI green** — `pytest -m "not slow and not gpu"`
+- **433 unit tests, CI green** — `pytest -m "not slow and not gpu"`
   (lint via `ruff check`, formatting via `ruff format --check`,
   typecheck via `mypy --strict qverify`).
 - **Apache 2.0** licensed, public org [github.com/Quantum-Labor](https://github.com/Quantum-Labor).
@@ -223,36 +223,46 @@ Currently benchmarked on ProofWriter and RuleTaker. See
 [benchmarks/LICENSE-DATA.md](benchmarks/LICENSE-DATA.md) for dataset
 attribution and the FOLIO exclusion rationale.
 
-**Verified end-to-end results from `scripts/run_benchmarks.py`** with the
-Gemma 4 E2B translator and the PennyLane simulator (`--max-variables 16`):
+**Verified end-to-end on the qverify-mini-50 hand-crafted suite**
+(50 examples covering propositional contradictions, modus ponens chains,
+transitivity, pigeonhole-tiny, AND/OR mixes, and grounded first-order
+formulas — every label cross-checked against PySAT before commit):
 
-| Dataset | Sample size | n_translated | n_translation_failed | n_skipped_too_large | n_verified | Accuracy |
-| --- | --- | --- | --- | --- | --- | --- |
-| ProofWriter (depth-1, validation) | 100 | 92 | 8 | 92 | 0 | n/a |
-| RuleTaker (depth-1, dev) | 200 | 10 | 190 | 10 | 0 | n/a |
+| Metric | Value |
+| --- | --- |
+| Examples | 50 (25 SAT / 25 UNSAT) |
+| Accuracy vs PySAT oracle | **100 %** (50 / 50) |
+| Avg verify time (simulator) | 3.3 s |
+| P95 verify time | 0.32 s |
+| Atoms per example | 1 – 9 (under the 16-qubit cap) |
+| Skipped | 0 |
 
-**Reading the table.** Both datasets translate cleanly when Gemma 4 E2B can
-parse the natural-language premises, but every successful translation
-produces a grounded CNF whose distinct-atom count exceeds the 16-qubit
-PennyLane statevector ceiling (`MAX_VARIABLES = 16`), so the verifier never
-runs and accuracy is reported as `n/a` rather than fabricated.
+The full per-example report and charts live at
+[benchmarks/results/qverify_mini_simulator/](benchmarks/results/qverify_mini_simulator/).
+The dataset itself is at
+[benchmarks/qverify_mini/dataset.json](benchmarks/qverify_mini/dataset.json),
+with a category-by-category breakdown in
+[benchmarks/qverify_mini/README.md](benchmarks/qverify_mini/README.md).
 
-This is consistent with the v0.1 / v0.2 limitations documented in
-[What does not work in v0.1](#what-does-not-work-in-v01) and the
-[Roadmap](#roadmap):
+### Benchmark scope
 
-- **Universes with >10-20 constants** trigger the `n_skipped_too_large`
-  counter. Smarter grounding (Roadmap v0.3) is required before the
-  benchmark CNFs fit on a 16-qubit simulator.
-- **Free-form natural-language premises** (especially ProofWriter's
-  abstract templates) still trip the translator (Roadmap v0.2 has
-  the multi-sentence rewrite that addresses this).
+QVerify v1.0 ships **one** benchmark with reportable accuracy:
+`qverify-mini-50`. The two natural-language datasets that the harness
+also supports are listed here for completeness with their honest scope:
 
-The full per-example reports are checked into
-[benchmarks/results/](benchmarks/results/). The pipeline itself
-(`download → translate → ground → size-check → SAT-oracle → Grover`)
-runs end-to-end without errors; the zero verification count is a
-dataset/hardware mismatch, not a harness bug.
+| Dataset | Status in v1.0 | Why |
+| --- | --- | --- |
+| qverify-mini-50 | **In scope.** 100 % accuracy on 50 hand-crafted examples. | CNFs sized to the simulator (1-9 atoms); labels validated by PySAT. |
+| ProofWriter (depth-1) | Out of scope. | Grounded CNFs reach 19-83 atoms — beyond the 16-qubit PennyLane ceiling (`MAX_VARIABLES = 16`). The translation path runs (92 / 100 examples translate cleanly) but every successful translation hits `n_skipped_too_large`. |
+| RuleTaker (depth-1) | Out of scope. | Same atom-count blow-up after grounding (25-54 atoms). Tracked for v1.1 once smarter grounding (Roadmap v0.3) lands. |
+
+The intention is honest: hand-crafted SAT benchmarks demonstrate verifier
+correctness *now*; the public NL datasets exercise translation but starve
+the verifier until grounding gets smarter. Both axes have to scale before
+we can report a meaningful NL-benchmark accuracy.
+
+The full ProofWriter / RuleTaker reports (with `accuracy: n/a`) are
+checked into [benchmarks/results/](benchmarks/results/) for transparency.
 
 To reproduce the runs above, first download the datasets:
 

@@ -1,0 +1,515 @@
+{
+  "dataset": "qverify-mini",
+  "backend": "default.qubit",
+  "n_examples": 50,
+  "n_skipped": 0,
+  "accuracy": 1.0,
+  "avg_seconds": 3.3067833896195227,
+  "p95_seconds": 0.3194446280031116,
+  "n_translated": 0,
+  "n_translation_failed": 0,
+  "avg_translation_seconds": 0.0,
+  "n_skipped_too_large": 0,
+  "results": [
+    {
+      "example_id": "a01",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.06022830899746623,
+      "n_qubits": 1,
+      "n_iterations": 1
+    },
+    {
+      "example_id": "a02",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.029432226001517847,
+      "n_qubits": 1,
+      "n_iterations": 1
+    },
+    {
+      "example_id": "a03",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.04833027799759293,
+      "n_qubits": 1,
+      "n_iterations": 1
+    },
+    {
+      "example_id": "a04",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.0926051060014288,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "a05",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.20489475599606521,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "a06",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.023863778995291796,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "a07",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.020170801995845977,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "a08",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.025361142004840076,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "b01",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.0216899890001514,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "b02",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.029466830994351767,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "b03",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.028637160998187028,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "b04",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.02621250399533892,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "b05",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.016958011998212896,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "b06",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.024013021000428125,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "c01",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.03195743799733464,
+      "n_qubits": 4,
+      "n_iterations": 3
+    },
+    {
+      "example_id": "c02",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.04545175699604442,
+      "n_qubits": 4,
+      "n_iterations": 3
+    },
+    {
+      "example_id": "c03",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.0189066829989315,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "c04",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.018903102005424444,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "c05",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.021963377002975903,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "c06",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.0176239339998574,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "d01",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.02074646999972174,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "d02",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.029774761002045125,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "d03",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.019483926000248175,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "d04",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.024527371999283787,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "d05",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.02095619199826615,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "d06",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.027239916002145037,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "e01",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.017952793001313694,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "e02",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.03525932400225429,
+      "n_qubits": 4,
+      "n_iterations": 3
+    },
+    {
+      "example_id": "e03",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.8611685339928954,
+      "n_qubits": 6,
+      "n_iterations": 6
+    },
+    {
+      "example_id": "e04",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 162.7746966440027,
+      "n_qubits": 9,
+      "n_iterations": 18
+    },
+    {
+      "example_id": "f01",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.004586983995977789,
+      "n_qubits": 1,
+      "n_iterations": 1
+    },
+    {
+      "example_id": "f02",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.005704925999452826,
+      "n_qubits": 1,
+      "n_iterations": 1
+    },
+    {
+      "example_id": "f03",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.008855961998051498,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "f04",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.009374143999593798,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "f05",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.013478348999342415,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "f06",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.009732865000842139,
+      "n_qubits": 2,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "f07",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.01844363800046267,
+      "n_qubits": 4,
+      "n_iterations": 3
+    },
+    {
+      "example_id": "f08",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.026018026997917332,
+      "n_qubits": 4,
+      "n_iterations": 3
+    },
+    {
+      "example_id": "f09",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.01415224900119938,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "f10",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.015700916999776382,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "g01",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.013543050998123363,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "g02",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.015096809001988731,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "g03",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.015624907995515969,
+      "n_qubits": 4,
+      "n_iterations": 3
+    },
+    {
+      "example_id": "g04",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.011863673993502744,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "g05",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.010823272001289297,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "g06",
+      "dataset_label": "consistent",
+      "expected": "consistent",
+      "predicted": "consistent",
+      "agrees": true,
+      "verify_seconds": 0.01448877400252968,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "g07",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.021978369004500564,
+      "n_qubits": 3,
+      "n_iterations": 2
+    },
+    {
+      "example_id": "g08",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.13563275200431235,
+      "n_qubits": 6,
+      "n_iterations": 6
+    },
+    {
+      "example_id": "g09",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.3194446280031116,
+      "n_qubits": 6,
+      "n_iterations": 6
+    },
+    {
+      "example_id": "g10",
+      "dataset_label": "inconsistent",
+      "expected": "inconsistent",
+      "predicted": "inconsistent",
+      "agrees": true,
+      "verify_seconds": 0.016149044000485446,
+      "n_qubits": 3,
+      "n_iterations": 2
+    }
+  ]
+}

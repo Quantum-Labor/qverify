@@ -34,6 +34,7 @@ from qverify.eval.datasets import (
     DatasetExample,
     last_skip_count,
     load_proofwriter,
+    load_qverify_mini,
     load_ruletaker,
 )
 from qverify.eval.runner import TranslateFn, evaluate
@@ -47,13 +48,16 @@ _log = get_logger("qverify.eval.cli")
 LOADERS = {
     "proofwriter": load_proofwriter,
     "ruletaker": load_ruletaker,
+    "qverify-mini": load_qverify_mini,
 }
 
 # ProofWriter publishes its dev split as "validation"; RuleTaker as "dev".
-# When the user does not pass --split, we pick the right name per dataset.
+# qverify-mini ships a single split named "all". When the user does not pass
+# --split, we pick the right name per dataset.
 DEFAULT_SPLIT = {
     "proofwriter": "validation",
     "ruletaker": "dev",
+    "qverify-mini": "all",
 }
 
 TRANSLATE_CHOICES = ("gemma-e2b",)
