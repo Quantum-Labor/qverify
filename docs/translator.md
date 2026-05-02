@@ -1,6 +1,6 @@
 # Translator
 
-*Last updated: 2026-04-29*
+*Last updated: 2026-05-02 · Status: v1.0 stable*
 
 The Translator turns one natural-language reasoning step into a [`TranslationResult`](../qverify/translator/types.py) carrying both a (possibly first-order) CNF and the universe of constants the controller needs to ground that CNF before handing it to Grover's search. The production backend uses **grammar-constrained generation** via [outlines](https://github.com/dottxt-ai/outlines): the LLM's token-level generation is constrained by a Pydantic schema, so syntactically invalid output is mathematically impossible. Combined with the strict deterministic parser this gives two layers of defence — outlines guarantees the JSON shape, and the parser surfaces any *semantic* mismatches (wrong predicate case, free variable declared as a constant) with a clear `TranslationParseError`.
 

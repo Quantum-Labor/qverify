@@ -1,14 +1,15 @@
 # IBM Quantum hardware notes
 
-*Last updated: 2026-04-29*
+*Last updated: 2026-05-02 · Status: v1.0 stable*
 
 The verifier ships with two interchangeable backends: a fast PennyLane simulator (the default, used for development and CI) and an IBM Quantum hardware backend that runs the same Grover circuit on a Heron r2 device (default `ibm_kingston`). The simulator stays the default everywhere — hardware is opt-in by passing `backend=IBMQuantumBackend()` to `verify()`.
 
 ## Verified hardware runs
 
-| Date       | Backend   | Job ID         | Test                              |
-|------------|-----------|----------------|-----------------------------------|
-| 2026-04-28 | ibm_fez   | [d7o7dsqk4prs73dt4s6g](https://quantum.cloud.ibm.com/workloads?search=d7o7dsqk4prs73dt4s6g) | test_simple_sat_on_real_hardware  |
+| Date       | Backend   | Job ID         | Test / formula                              |
+|------------|-----------|----------------|-----|
+| 2026-04-28 | ibm_fez   | [d7o7dsqk4prs73dt4s6g](https://quantum.cloud.ibm.com/workloads?search=d7o7dsqk4prs73dt4s6g) | `test_simple_sat_on_real_hardware` (saturated SAT smoke) |
+| 2026-05-01 | ibm_fez   | [d7q961poagoc73fj6oag](https://quantum.ibm.com/jobs/d7q961poagoc73fj6oag) | `(P ∨ Q) ∧ (¬P ∨ Q)` — 3/4 satisfying assignments, classical post-check ranks the satisfier at #2 (see "Saturated formulas" below) |
 
 ## Free IBM Quantum account
 

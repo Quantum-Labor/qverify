@@ -3,6 +3,31 @@
 All notable changes to QVerify are recorded here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## v1.0.1 — 2026-05-02
+
+Hotfix release: the v1.0.0 Hugging Face Space failed to start because
+the Dockerfile only `COPY`'d `app.py` from the build context, leaving
+`safety.py`, the SVG logo, and the in-repo benchmark reports out of
+the image. The Space stage was `RUNTIME_ERROR` until this patch.
+
+### Fixed
+
+- `space/Dockerfile` now copies `safety.py`, `assets/`, and
+  `benchmarks/` next to `app.py` so the Space starts cleanly and the
+  hero card / benchmarks panel can read the in-repo report files.
+
+### Documentation
+
+- README rewritten with a v1.0 status sheet (release / accuracy /
+  test count / hardware / deployment / pipeline / license / position)
+  and a sharper "Why this is real engineering" section.
+- `docs/benchmarks.md` highlights the qverify-mini-50 result; the
+  per-dataset table now lists the in-scope/out-of-scope status per
+  benchmark.
+- `docs/quantum-hardware-notes.md` "Verified hardware runs" table
+  gains the second IBM job (`d7q961poagoc73fj6oag`).
+- All `docs/*.md` "Last updated" stamps refreshed to 2026-05-02.
+
 ## v1.0.0 — 2026-05-02
 
 First stable release. The verifier has a measurable accuracy number

@@ -1,6 +1,6 @@
 # Controller
 
-*Last updated: 2026-04-29*
+*Last updated: 2026-05-02 · Status: v1.0 stable*
 
 The controller is the central feature of QVerify. It streams a thinking-mode LLM (Gemma 4 E4B by default), captures the *thinking* phase for UI display only, then extracts numbered declarative reasoning steps from the *answer* phase — the pattern Gemma 4 uses for its actual conclusions. Each extracted step runs through the existing Translator + Verifier pipeline against the running premise list, and — when Grover's search reports that the step is inconsistent with the premises (UNSAT) — the controller injects a focused correction prompt back into the LLM and asks for a single-sentence rewrite. Each step is committed to the premise list only after it survives verification.
 

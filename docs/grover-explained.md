@@ -1,6 +1,6 @@
 # Grover's algorithm in QVerify
 
-*Last updated: 2026-04-29*
+*Last updated: 2026-05-02 · Status: v1.0 stable*
 
 Grover's algorithm searches a database of `N = 2^n` items for a marked subset of `M` items in roughly `π/4 · √(N/M)` queries, instead of the `N/2` expected of a classical brute-force search. In QVerify the "database" is the assignment space of a Boolean formula and the "marked items" are the satisfying assignments — finding one is the same as finding a counter-model that witnesses an inconsistency between the LLM's reasoning step and the surrounding premises.
 

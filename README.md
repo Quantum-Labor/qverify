@@ -1,37 +1,63 @@
 # QVerify
 
-**Live demo:** [huggingface.co/spaces/Laborator/qverify](https://huggingface.co/spaces/Laborator/qverify) — run Grover's algorithm against logical contradictions on a CPU simulator or on a real IBM Heron r2 quantum processor, in your browser.
+**A quantum-assisted verifier for LLM reasoning, deployed end to end in the browser and on real IBM quantum hardware.**
+
+> Each step a language model emits is translated into propositional CNF, grounded over a finite universe, and then checked for satisfiability by Grover's algorithm running on either a CPU simulator or IBM's 156-qubit Heron r2 processor. The verifier surfaces logical contradictions that no output-layer filter can catch.
+
+**Live demo:** [huggingface.co/spaces/Laborator/qverify](https://huggingface.co/spaces/Laborator/qverify)
 
 [![tests](https://github.com/Quantum-Labor/qverify/actions/workflows/tests.yml/badge.svg)](https://github.com/Quantum-Labor/qverify/actions/workflows/tests.yml)
 [![lint](https://github.com/Quantum-Labor/qverify/actions/workflows/lint.yml/badge.svg)](https://github.com/Quantum-Labor/qverify/actions/workflows/lint.yml)
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Built with Gemma 4](https://img.shields.io/badge/Built%20with-Gemma%204-4285F4)](https://ai.google.dev/gemma)
 [![Demo](https://img.shields.io/badge/HF%20Space-Laborator%2Fqverify-yellow)](https://huggingface.co/spaces/Laborator/qverify)
+[![Release](https://img.shields.io/badge/release-v1.0.1-purple)](https://github.com/Quantum-Labor/qverify/releases/tag/v1.0.1)
 
-> ✓ **Verified on real quantum hardware**
-> Backend: `ibm_fez` (IBM Heron r2, 156 qubits) · Job ID: [`d7q961poagoc73fj6oag`](https://quantum.ibm.com/jobs/d7q961poagoc73fj6oag)
-> Date: 2026-05-01 · Shots: 1024 · Transpiled depth: 360 · Result: formula consistent (3/4 satisfying assignments found)
+## v1.0 status sheet
 
-QVerify checks logical reasoning steps from large language models using Grover's
-search on a quantum simulator and on real IBM quantum hardware. Each reasoning
-step is translated into a propositional logic formula, grounded in a finite
-universe of constants, then verified for consistency against the chain of prior
-premises.
+| | |
+| --- | --- |
+| **Release** | v1.0.1 — first stable, 2026-05-02 |
+| **Verifier accuracy** | **100 %** on qverify-mini-50 (PySAT-validated, hand-crafted) |
+| **Test count** | 433 unit tests, CI green (lint + ruff format + mypy strict, all clean) |
+| **Real hardware** | [`d7q961poagoc73fj6oag`](https://quantum.ibm.com/jobs/d7q961poagoc73fj6oag) — `ibm_fez` (Heron r2, 156 qubits), 1024 shots, transpiled depth 360, 2026-05-01 |
+| **Public deployment** | Hugging Face Space at [Laborator/qverify](https://huggingface.co/spaces/Laborator/qverify) — per-IP rate limit + global daily cap + IBM quota guard |
+| **Pipeline** | `Translator (Gemma 4 E2B + outlines)` → `Grounding` → `Grover oracle synthesis` → `PennyLane simulator` ∥ `IBM Heron r2` |
+| **License** | Apache 2.0 — datasets attributed under their own licenses ([benchmarks/LICENSE-DATA.md](benchmarks/LICENSE-DATA.md)) |
+| **Position** | Project 1 of 3 in the Quantum Co-Processor research program |
 
 ## Why this is real engineering
 
-- **Real IBM Heron r2 hardware run** — single-shot reproducible job
-  [`d7q961poagoc73fj6oag`](https://quantum.ibm.com/jobs/d7q961poagoc73fj6oag)
-  on `ibm_fez` (156 qubits) — see [Hardware run](#hardware-run) for the
-  full reproducibility record.
-- **433 unit tests, CI green** — `pytest -m "not slow and not gpu"`
-  (lint via `ruff check`, formatting via `ruff format --check`,
-  typecheck via `mypy --strict qverify`).
-- **Apache 2.0** licensed, public org [github.com/Quantum-Labor](https://github.com/Quantum-Labor).
-- **Project 1 of 3** in the Quantum Co-Processor research program (verifier
-  · translator · controller). This repo ships the verifier, the natural-language
-  translator (Gemma 4 E2B + outlines grammar-constrained generation), and the
-  end-to-end controller; the larger reasoning loop is the upstream research target.
+- **Verified on real quantum hardware**, not just on a simulator. Single-shot
+  reproducible job [`d7q961poagoc73fj6oag`](https://quantum.ibm.com/jobs/d7q961poagoc73fj6oag)
+  on `ibm_fez` (156 qubits, IBM Heron r2). Anyone with an IBM Quantum account
+  can open the URL and see the same circuit, the same shots, and the same
+  measurement histogram.
+- **Verifier accuracy is reported, not assumed.** The `qverify-mini-50`
+  benchmark hand-crafts 50 SAT/UNSAT formulas covering propositional
+  contradictions, modus ponens chains, transitivity, resolution,
+  pigeonhole-tiny, grounded first-order, and AND/OR mixes. **Every label was
+  cross-checked against PySAT Glucose3 before commit**, so the gold verdict
+  is *independent* of QVerify's own implementation. The verifier scores 100 %
+  (50/50) against this oracle.
+- **Honest scope.** The two public NL benchmarks the harness also supports
+  (ProofWriter, RuleTaker) are explicitly listed as *out of scope for v1.0*
+  because their grounded CNFs (19-83 distinct atoms) blow past the 16-qubit
+  PennyLane statevector ceiling. Their reports are checked in with
+  `accuracy: n/a` rather than fabricated; smarter grounding lands in v1.1.
+- **433 unit tests, all green in CI.** Lint (`ruff check`), formatting
+  (`ruff format --check`), strict typecheck (`mypy qverify`) all clean on
+  every push. The IBM hardware path has its own opt-in smoke test.
+- **Production-grade public deployment.** The HF Space is gated by a
+  three-layer safety stack — per-IP rate limit (1 IBM run / 5 min),
+  global daily cap (5 / UTC day), IBM monthly-quota floor — so the project's
+  free-tier budget cannot be drained by a script. Logic is in
+  [`space/safety.py`](space/safety.py); 10 standalone tests.
+- **Apache 2.0**, public org [github.com/Quantum-Labor](https://github.com/Quantum-Labor),
+  proper dataset attribution.
+- **Project 1 of 3** in the Quantum Co-Processor research program. This repo
+  ships verifier, translator, and controller; the larger reasoning loop and
+  the second/third companion projects are the upstream targets.
 
 ```
                               ┌────────────────────┐

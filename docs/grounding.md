@@ -1,6 +1,6 @@
 # Grounding
 
-*Last updated: 2026-04-29*
+*Last updated: 2026-05-02 · Status: v1.0 stable*
 
 The verifier accepts only propositional CNF — formulas where every literal is a Boolean variable with no first-order arguments. Real reasoning, on the other hand, almost always emits universally quantified statements: "All cats have fur", "Every bird flies". The grounding pass closes that gap by instantiating each free first-order variable with each constant in a finite universe of discourse, producing a propositional CNF the verifier can hand straight to Grover's search.
 
