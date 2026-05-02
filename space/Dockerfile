@@ -20,6 +20,9 @@ RUN pip install --no-cache-dir --no-deps \
     "qverify @ git+https://github.com/Quantum-Labor/qverify.git@main"
 
 COPY app.py .
+COPY safety.py .
+COPY assets/ ./assets/
+COPY benchmarks/ ./benchmarks/
 
 # HuggingFace Spaces expect the app to listen on 0.0.0.0:7860.
 ENV GRADIO_SERVER_NAME=0.0.0.0 \
