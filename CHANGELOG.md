@@ -3,6 +3,48 @@
 All notable changes to QVerify are recorded here. Versions follow
 [Semantic Versioning](https://semver.org/).
 
+## v1.0.0 — 2026-05-02
+
+First stable release. The verifier has a measurable accuracy number
+(100% on a 50-example hand-crafted benchmark with PySAT-validated
+labels), the public Space carries the v1.0.0 stable badge, and the
+project closes its v1 scope.
+
+### Added
+
+- **qverify-mini-50** hand-crafted benchmark
+  (`benchmarks/qverify_mini/dataset.json`): 50 examples, 25 SAT / 25
+  UNSAT, 1-9 atoms each (under the 16-qubit simulator ceiling).
+  Categories: propositional trivia, modus ponens chains, transitivity,
+  resolution, pigeonhole-tiny, grounded first-order, AND/OR mixes.
+  Every label was cross-checked against PySAT Glucose3 before commit.
+- `qverify.eval.datasets.load_qverify_mini()` loader plus
+  `--dataset qverify-mini` in the benchmark CLI. No translator needed;
+  every record ships a pre-rendered CNF.
+- `benchmarks/results/qverify_mini_simulator/` with report.json and
+  three PNG charts. Verified accuracy: **100% (50/50)**, avg
+  3.3s per example, P95 0.32s, 0 skipped.
+- Space hero card showing the qverify-mini-50 accuracy /
+  avg-verify-time / example-count directly under the intro copy,
+  sourced from the in-repo report.json.
+- Stable-status badge on the Space hero next to the version pill
+  ('stable · 433 tests · CI green').
+
+### Changed
+
+- `_coerce_example` accepts records that ship a `rendered_cnf` without
+  `premises`/`hypothesis` text; records with neither are still
+  rejected.
+- README benchmarks section replaced with the qverify-mini-50 numbers
+  and a 'Benchmark scope' subsection that names ProofWriter and
+  RuleTaker as out-of-scope for v1.0 (atom counts dwarf the 16-qubit
+  simulator ceiling).
+- Space hero version pill: v0.2.0 -> v1.0.0.
+
+### Test count
+
+433 unit tests (was 432 in v0.2.0), all green in CI.
+
 ## v0.2.0 — 2026-05-02
 
 Production-grade public demo. The Hugging Face Space at
