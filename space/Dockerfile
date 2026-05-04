@@ -25,8 +25,13 @@ COPY assets/ ./assets/
 COPY benchmarks/ ./benchmarks/
 
 # HuggingFace Spaces expect the app to listen on 0.0.0.0:7860.
+# PYTHONUNBUFFERED + `python -u` so cold-import progress (pennylane,
+# qiskit, qiskit-ibm-runtime — ~60–120 s on CPU Basic) is visible in
+# the Space's container logs in real time, instead of appearing only
+# after Gradio finishes booting.
 ENV GRADIO_SERVER_NAME=0.0.0.0 \
-    GRADIO_SERVER_PORT=7860
+    GRADIO_SERVER_PORT=7860 \
+    PYTHONUNBUFFERED=1
 EXPOSE 7860
 
-CMD ["python", "app.py"]
+CMD ["python", "-u", "app.py"]
