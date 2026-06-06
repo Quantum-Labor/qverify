@@ -1,0 +1,10 @@
+{
+  "n_examples": 50,
+  "accuracy": 1.0,
+  "avg_seconds": 2.9977756375999522,
+  "p95_seconds": 0.2341388109998661,
+  "n_skipped": 0,
+  "wall_clock_total_s": 149.90051957299875,
+  "per_example_max_s": 148.61898580100024,
+  "slowest_example": "e04"
+}

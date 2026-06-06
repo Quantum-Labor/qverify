@@ -1,0 +1,5 @@
+space/app.py:86: unused variable 'POLL_INTERVAL_SECONDS' (60% confidence)
+space/app.py:92: unused variable 'LIVE_POLL_TIMEOUT_SECONDS' (60% confidence)
+space/app.py:513: unused function '_build_verification_result' (60% confidence)
+space/app.py:557: unused function '_final_payload' (60% confidence)
+space/app.py:678: unused function 'check_job_status' (60% confidence)

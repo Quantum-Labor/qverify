@@ -1,0 +1,56 @@
+........................................................................ [ 16%]
+........................................................................ [ 33%]
+........................................................................ [ 49%]
+........................................................................ [ 66%]
+........................................................................ [ 83%]
+........................................................................ [ 99%]
+.                                                                        [100%]
+================================ tests coverage ================================
+_______________ coverage: platform linux, python 3.11.15-final-0 _______________
+
+Name                                  Stmts   Miss Branch BrPart  Cover   Missing
+---------------------------------------------------------------------------------
+qverify/__init__.py                       1      0      0      0   100%
+qverify/controller/__init__.py            4      0      0      0   100%
+qverify/controller/controller.py        190      6     50      3    96%   40->exit, 402-403, 502, 513, 518-520
+qverify/controller/correction.py         15      0      4      0   100%
+qverify/controller/llm.py               138     28     54      7    80%   41, 122, 137->139, 141->108, 153->108, 163, 164->exit, 167, 248-261, 270-312
+qverify/controller/types.py              63      0      2      0   100%
+qverify/controller/utils.py              19      1      8      2    89%   55, 59->52
+qverify/eval/__init__.py                  5      0      0      0   100%
+qverify/eval/charts.py                   53      0      6      2    97%   48->50, 65->69
+qverify/eval/datasets.py                185     12     70      8    92%   79, 82, 86, 90, 293, 319, 340, 344, 391-392, 422-423
+qverify/eval/metrics.py                  39      0      2      0   100%
+qverify/eval/oracle.py                   13      1      4      1    88%   27
+qverify/eval/runner.py                   78      5     18      1    94%   80, 133-136
+qverify/translator/__init__.py            4      0      0      0   100%
+qverify/translator/cnf.py                73      0     28      0   100%
+qverify/translator/few_shot.py           18      0      2      0   100%
+qverify/translator/llm.py                41     23      8      2    41%   15->exit, 45-48, 51-73, 84-91, 110-111
+qverify/translator/parser.py            161     14     72     12    89%   63, 80->106, 84-85, 88->103, 92-93, 96->101, 149, 203-204, 232, 260-261, 263-264, 276
+qverify/translator/schema.py             11      0      0      0   100%
+qverify/translator/translator.py         50      0     10      0   100%
+qverify/translator/types.py               8      0      0      0   100%
+qverify/translator/utils.py               7      0      2      0   100%
+qverify/utils/__init__.py                 0      0      0      0   100%
+qverify/utils/config.py                  22      5      2      0    71%   34-41, 47
+qverify/utils/ibm_client.py              54     22      6      2    60%   11-12, 49-51, 94-127, 139-140
+qverify/utils/logging.py                 13      0      2      0   100%
+qverify/utils/models.py                   4      0      0      0   100%
+qverify/verifier/__init__.py              6      0      0      0   100%
+qverify/verifier/_universe.py            23      1     12      1    94%   29
+qverify/verifier/_vars.py                 7      1      4      1    82%   22
+qverify/verifier/backends.py             78      7     18      3    90%   15, 41, 83, 125, 136-138
+qverify/verifier/classical_check.py      17      0      8      0   100%
+qverify/verifier/diffusion.py            25      0     12      0   100%
+qverify/verifier/encoding.py             46      0     22      0   100%
+qverify/verifier/grounding.py            30      0     10      0   100%
+qverify/verifier/grover.py               61      0     20      0   100%
+qverify/verifier/grover_circuit.py       71      0     46      2    98%   46->51, 57->61
+qverify/verifier/oracle.py               33      2      8      2    90%   32, 46
+qverify/verifier/types.py                27      1      4      1    94%   19
+---------------------------------------------------------------------------------
+TOTAL                                  1693    129    514     50    91%
+Coverage HTML written to dir audit/coverage
+Coverage JSON written to file audit/raw/coverage.json
+433 passed, 9 deselected in 13.47s
