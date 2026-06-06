@@ -9,10 +9,19 @@ import numpy as np
 import pennylane as qml
 
 from qverify.verifier.diffusion import build_diffusion
+from qverify.verifier.encoding import VerifierError
 from qverify.verifier.oracle import build_sat_oracle, required_ancillas
 
 if TYPE_CHECKING:
     from qverify.utils.ibm_client import IBMRuntimeClient
+
+
+# Maximum total wires (atoms + clause ancillas + flag) the statevector
+# simulator will allocate. Statevector cost is 2**total_wires, so this caps
+# memory and runtime. The atom-only MAX_VARIABLES cap in
+# qverify.verifier.grover does not bound the per-clause ancillas, so a
+# low-atom / high-clause CNF can still blow past it; this is the backstop.
+MAX_SIMULATOR_QUBITS: int = 24
 
 
 @runtime_checkable
@@ -62,6 +71,14 @@ class PennyLaneBackend:
         n_clauses = len(encoded_clauses)
         n_anc = required_ancillas(n_clauses)
         total_wires = n_qubits + n_anc
+
+        if total_wires > MAX_SIMULATOR_QUBITS:
+            raise VerifierError(
+                f"Grover circuit needs {total_wires} wires ({n_qubits} atoms + "
+                f"{n_clauses} clause ancillas + 1 flag), over the simulator "
+                f"budget of {MAX_SIMULATOR_QUBITS} (statevector cost is 2**wires). "
+                f"Reduce atoms or clauses, or use a hardware backend."
+            )
 
         oracle = build_sat_oracle(encoded_clauses, n_qubits)
         diffusion = build_diffusion(n_qubits)
