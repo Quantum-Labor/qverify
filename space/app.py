@@ -9,12 +9,12 @@ Secrets).
 The simulator path is synchronous and returns in milliseconds. The
 IBM hardware path takes 2-20 minutes wall-clock (queue + transpile +
 execution + result fetch), well past Gradio's WebSocket timeout on
-HF Spaces' free tier. To keep the UI responsive across that window,
-the IBM verifier is implemented as a generator that yields a
-"submitted" update with the IBM job_id immediately, polls the job
-every 8 seconds, and yields progress + the final result. A separate
-"recover by job ID" panel is provided as a fallback when the live
-stream disconnects mid-run.
+HF Spaces' free tier. The IBM handler therefore submits the job and
+returns immediately with the IBM job_id; the run's status and final
+measurement histogram are tracked on the IBM Quantum Workloads
+dashboard (linked in the result). Live in-Space polling and a
+recover-by-job-id panel are planned but are not part of this
+verifier-only build.
 
 The translator (Gemma 4 E4B with grammar-constrained generation)
 is intentionally not loaded here: it needs a GPU, which CPU Basic
@@ -26,7 +26,6 @@ from __future__ import annotations
 
 import os
 import time
-from collections import Counter
 from dataclasses import dataclass
 from datetime import UTC
 from pathlib import Path
@@ -40,16 +39,11 @@ from qverify.utils.ibm_client import IBMRuntimeClient
 from qverify.verifier import verify
 from qverify.verifier._universe import Universe
 from qverify.verifier.backends import PennyLaneBackend
-from qverify.verifier.classical_check import satisfies
 from qverify.verifier.encoding import AtomEncoder
 from qverify.verifier.grounding import ground_cnf
-from qverify.verifier.grover import (
-    MAX_VARIABLES,
-    TOP_MEASUREMENTS_KEEP,
-    optimal_iterations,
-)
+from qverify.verifier.grover import MAX_VARIABLES, optimal_iterations
 from qverify.verifier.grover_circuit import build_grover_qiskit_circuit
-from qverify.verifier.types import CounterModel, VerificationResult
+from qverify.verifier.types import VerificationResult
 
 VerifyMode = _Literal["entailment", "consistency"]
 
@@ -78,22 +72,6 @@ _QV_THEME = gr.themes.Base(
 )
 
 IBM_CONSOLE_BASE = "https://quantum.cloud.ibm.com/workloads?search="
-
-# Polling cadence for IBM job status. 8 s is conservative — IBM's
-# backend-status endpoints rate-limit at ~1 req/s but the polling adds
-# little value below ~5 s anyway because Heron jobs typically queue
-# for tens of seconds at minimum.
-POLL_INTERVAL_SECONDS = 8
-
-# Hard ceiling on how long the live UI flow waits for an IBM job.
-# Past this, yield a "timeout" message and tell the user to use the
-# fallback panel. 600 s = 10 minutes, which covers a typical free-tier
-# queue + execution window.
-LIVE_POLL_TIMEOUT_SECONDS = 600
-
-# IBM job statuses that mean "the job is finished, result is ready
-# (success or failure)". Anything else is in-flight.
-IBM_TERMINAL_STATUSES = frozenset({"DONE", "ERROR", "CANCELLED"})
 
 
 @dataclass(frozen=True)
@@ -442,30 +420,18 @@ def _build_runtime_client() -> IBMRuntimeClient:
     return IBMRuntimeClient(token=token, instance=instance)
 
 
-@dataclass(frozen=True)
-class _PreparedJob:
-    """Everything we need to decode an IBM job result into a VerificationResult."""
+def _prepare_and_submit(label: str, shots: int = 1024) -> tuple[str, str]:
+    """Ground, encode, transpile, and submit the example to IBM hardware.
 
-    cnf: CNF  # the grounded propositional CNF
-    encoder: AtomEncoder
-    n_qubits: int
-    n_iterations: int
-    n_clauses: int
-    shots: int
-
-
-def _prepare_and_submit(label: str, shots: int = 1024) -> tuple[Any, str, str, _PreparedJob]:
-    """Ground, encode, transpile, and submit the example. Return immediately
-    with the live qiskit Job, its job_id, the backend name, and a
-    :class:`_PreparedJob` carrying the metadata needed to decode the result
-    once it lands.
+    Returns ``(job_id, backend_name)``. The blocking ``job.result()`` is
+    deliberately not awaited here: the handler returns the job_id
+    immediately and the run is tracked on the IBM Workloads dashboard.
     """
     ex = EXAMPLES[label]
     grounded = ground_cnf(ex.cnf, ex.universe)
 
     encoder = AtomEncoder(grounded)
     n_qubits = encoder.n_qubits
-    n_clauses = len(grounded.clauses)
     if n_qubits > MAX_VARIABLES:
         raise ValueError(
             f"CNF has {n_qubits} variables; the Space accepts at most "
@@ -476,9 +442,6 @@ def _prepare_and_submit(label: str, shots: int = 1024) -> tuple[Any, str, str, _
 
     circuit = build_grover_qiskit_circuit(encoded_clauses, n_qubits, n_iterations)
 
-    # Mirror what qverify.utils.ibm_client.IBMRuntimeClient.run does, but
-    # split the blocking job.result() out of this submit phase so the UI
-    # can poll between submission and completion.
     from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
     from qiskit_ibm_runtime import SamplerV2
 
@@ -492,96 +455,7 @@ def _prepare_and_submit(label: str, shots: int = 1024) -> tuple[Any, str, str, _
 
     sampler = SamplerV2(mode=backend)
     job = sampler.run([transpiled], shots=shots)
-    job_id = str(job.job_id())
-
-    prepared = _PreparedJob(
-        cnf=grounded,
-        encoder=encoder,
-        n_qubits=n_qubits,
-        n_iterations=n_iterations,
-        n_clauses=n_clauses,
-        shots=shots,
-    )
-    return job, job_id, str(backend_name), prepared
-
-
-def _decode_counts(raw_counts: dict[str, int]) -> dict[str, int]:
-    """Reverse Qiskit's little-endian-by-classical-bit ordering so qubit 0 is leftmost."""
-    return {bs[::-1]: int(c) for bs, c in raw_counts.items()}
-
-
-def _build_verification_result(
-    counts: dict[str, int],
-    prepared: _PreparedJob,
-    backend_name: str,
-    mode: VerifyMode,
-) -> VerificationResult:
-    """Run the same classical post-check the simulator path uses, then assemble
-    a :class:`VerificationResult` so the UI output shape is identical."""
-    counter: Counter[str] = Counter(counts)
-    top = counter.most_common(TOP_MEASUREMENTS_KEEP)
-    top_measurements = tuple((bs, c) for bs, c in top)
-
-    found_satisfying = False
-    satisfying: dict[str, bool] | None = None
-    for bits, _c in counter.most_common():
-        candidate = prepared.encoder.bitstring_to_assignment(bits)
-        if satisfies(prepared.cnf, candidate):
-            found_satisfying = True
-            satisfying = candidate
-            break
-
-    if mode == "consistency":
-        contradiction = not found_satisfying
-        counter_model: CounterModel | None = None
-    else:  # entailment
-        contradiction = found_satisfying
-        counter_model = (
-            CounterModel(assignment=satisfying)
-            if found_satisfying and satisfying is not None
-            else None
-        )
-
-    return VerificationResult(
-        contradiction_found=contradiction,
-        counter_model=counter_model,
-        n_variables=prepared.n_qubits,
-        n_clauses=prepared.n_clauses,
-        n_grover_iterations=prepared.n_iterations,
-        backend_name=backend_name,
-        shots=prepared.shots,
-        top_measurements=top_measurements,
-    )
-
-
-def _final_payload(
-    label: str,
-    mode: VerifyMode,
-    job_id: str,
-    backend_name: str,
-    result: VerificationResult,
-    wall: float,
-    ibm_status: str,
-    seconds_elapsed: int,
-) -> dict[str, Any]:
-    """Shape the completed-job dict the UI renders."""
-    return {
-        "status": "completed",
-        "ibm_job_id": job_id,
-        "ibm_job_url": IBM_CONSOLE_BASE + job_id,
-        "ibm_status": ibm_status,
-        "seconds_elapsed": seconds_elapsed,
-        "example": label,
-        "mode": mode,
-        "backend": backend_name,
-        "contradiction_found": result.contradiction_found,
-        "counter_model": _format_counter_model(result, mode),
-        "n_variables": result.n_variables,
-        "n_clauses": result.n_clauses,
-        "n_grover_iterations": result.n_grover_iterations,
-        "shots": result.shots,
-        "wall_clock_seconds": wall,
-    }
+    return str(job.job_id()), str(backend_name)
 
 
 def verify_on_ibm(label: str, mode: str, request: gr.Request | None = None) -> dict[str, Any]:
@@ -623,7 +497,7 @@ def verify_on_ibm(label: str, mode: str, request: gr.Request | None = None) -> d
 
     start = time.monotonic()
     try:
-        _job, job_id, backend_name, _prepared = _prepare_and_submit(label)
+        job_id, backend_name = _prepare_and_submit(label)
     except Exception as exc:
         return {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
 
@@ -642,120 +516,6 @@ def verify_on_ibm(label: str, mode: str, request: gr.Request | None = None) -> d
             f"Job {job_id} submitted to {backend_name}. "
             f"{verdict.daily_remaining}/{verdict.daily_cap} IBM runs left today. "
             "View status at https://quantum.cloud.ibm.com/workloads"
-        ),
-    }
-
-
-def _lookup_job(service: Any, job_id: str) -> Any:
-    """Find an IBM job by ID, with retry + jobs-list fallback for fresh jobs.
-
-    IBM's runtime API sometimes has a propagation delay: a job created seconds
-    ago may not yet be findable via service.job(id) even though it appears in
-    the dashboard. Strategy: try direct lookup up to 3 times with exponential
-    backoff, then scan the 50 most recent jobs as a fallback.
-    """
-    delay = 2
-    last_exc: Exception | None = None
-    for _ in range(3):
-        try:
-            return service.job(job_id)
-        except Exception as exc:
-            last_exc = exc
-            time.sleep(delay)
-            delay *= 2
-
-    # Fallback: scan recent jobs list
-    try:
-        for j in service.jobs(limit=50):
-            if str(j.job_id()) == job_id:
-                return j
-    except Exception:
-        pass  # if list scan also fails, surface the original direct-lookup error
-
-    raise last_exc  # type: ignore[misc]
-
-
-def check_job_status(job_id: str) -> dict[str, Any]:
-    """One-shot status query for a job already submitted (live stream lost)."""
-    job_id = (job_id or "").strip()
-    if not job_id:
-        return {"error": "Enter a Job ID first."}
-
-    if not IBM_AVAILABLE:
-        return {
-            "error": (
-                "IBM_QUANTUM_TOKEN and/or IBM_QUANTUM_INSTANCE are not set "
-                "in this Space's Secrets. Cannot query IBM Cloud."
-            )
-        }
-
-    try:
-        client = _build_runtime_client()
-        service = client.get_service()
-        job = _lookup_job(service, job_id)
-    except Exception as exc:
-        return {"error": f"failed to look up job {job_id!r}: {type(exc).__name__}: {exc}"}
-
-    try:
-        ibm_status = str(job.status())
-    except Exception as exc:
-        return {
-            "ibm_job_id": job_id,
-            "ibm_job_url": IBM_CONSOLE_BASE + job_id,
-            "error": f"status query failed: {type(exc).__name__}: {exc}",
-        }
-
-    if ibm_status not in IBM_TERMINAL_STATUSES:
-        return {
-            "status": "in_progress",
-            "ibm_job_id": job_id,
-            "ibm_job_url": IBM_CONSOLE_BASE + job_id,
-            "ibm_status": ibm_status,
-            "message": (
-                "Job is still running on IBM. Refresh this panel "
-                "periodically; IBM dashboards update at "
-                f"{IBM_CONSOLE_BASE}{job_id}."
-            ),
-        }
-
-    if ibm_status != "DONE":
-        return {
-            "status": "error",
-            "ibm_job_id": job_id,
-            "ibm_job_url": IBM_CONSOLE_BASE + job_id,
-            "ibm_status": ibm_status,
-            "error": f"IBM job ended with status {ibm_status}",
-        }
-
-    # Without the original CNF we cannot run the classical post-check or
-    # report contradiction_found. Surface the raw counts so the user has
-    # something to inspect; the full result is recoverable only by
-    # re-submitting on the live path.
-    try:
-        result_obj = job.result()
-        pub_result = result_obj[0]
-        raw_counts = pub_result.data.meas.get_counts()
-    except Exception as exc:
-        return {
-            "status": "error",
-            "ibm_job_id": job_id,
-            "ibm_job_url": IBM_CONSOLE_BASE + job_id,
-            "error": f"result fetch failed: {type(exc).__name__}: {exc}",
-        }
-
-    counts = _decode_counts(raw_counts)
-    top = sorted(counts.items(), key=lambda kv: kv[1], reverse=True)[:TOP_MEASUREMENTS_KEEP]
-    return {
-        "status": "completed",
-        "ibm_job_id": job_id,
-        "ibm_job_url": IBM_CONSOLE_BASE + job_id,
-        "ibm_status": ibm_status,
-        "top_measurements": top,
-        "message": (
-            "Raw counts retrieved. The classical SAT post-check requires "
-            "the original CNF, which this fallback panel does not have; "
-            "re-run on the live path to get a full contradiction_found "
-            "verdict."
         ),
     }
 
