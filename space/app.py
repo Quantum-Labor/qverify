@@ -506,6 +506,9 @@ def verify_on_ibm(label: str, mode: str, request: gr.Request | None = None) -> d
     try:
         job_id, backend_name = _prepare_and_submit(label)
     except Exception as exc:
+        # The rate-limit slot was committed on allow; the submit failed, so
+        # give it back rather than charging the visitor for a no-op.
+        _RATE_LIMITER.refund(ip=ip, now=_dt.now(UTC))
         return {"status": "error", "error": f"{type(exc).__name__}: {exc}"}
 
     elapsed = int(time.monotonic() - start)

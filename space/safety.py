@@ -147,6 +147,23 @@ class RateLimiter:
                 daily_cap=self._cap,
             )
 
+    def refund(self, *, ip: str, now: datetime) -> None:
+        """Undo a committed allow whose downstream action failed.
+
+        :meth:`check_and_register` is commit-on-allow: it bumps the daily
+        counter and stamps the IP before the caller attempts the IBM
+        submission. If that submission then fails, the slot was consumed for
+        nothing. Calling ``refund`` restores the daily counter and clears the
+        per-IP stamp so the visitor can retry immediately. No-op if the day
+        has already rolled over (counter is already 0).
+        """
+        with self._lock:
+            self._roll_day_if_needed(now)
+            if self._count > 0:
+                self._count -= 1
+            self._last_ip.pop(ip, None)
+            self._persist()
+
     def daily_remaining(self, now: datetime) -> int:
         """Read-only counter inspector for the UI badge."""
         with self._lock:

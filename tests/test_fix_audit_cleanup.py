@@ -160,3 +160,44 @@ def test_client_ip_falls_back_to_client_host_when_no_xff() -> None:
     # A request with neither header nor client must not raise; it yields a
     # stable string bucket (behaviour outside the scope of this fix).
     assert isinstance(app._client_ip(_FakeRequest()), str)
+
+
+# --- Commit 5: refund the rate-limit slot on failed IBM submit --------------
+
+
+def test_refund_restores_slot_and_clears_ip() -> None:
+    from datetime import UTC, datetime
+
+    rate_limiter_cls = _load_safety().RateLimiter
+    rl = rate_limiter_cls(window_seconds=300, daily_cap=5)
+    now = datetime(2026, 6, 6, 12, 0, tzinfo=UTC)
+
+    v = rl.check_and_register(ip="7.7.7.7", now=now)
+    assert v.allowed and v.daily_remaining == 4
+
+    rl.refund(ip="7.7.7.7", now=now)
+    assert rl.daily_remaining(now=now) == 5
+    # The per-IP stamp was cleared, so an immediate retry is allowed again.
+    assert rl.check_and_register(ip="7.7.7.7", now=now).allowed
+
+
+def test_verify_on_ibm_refunds_daily_slot_when_submit_fails(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from datetime import UTC, datetime
+
+    app = _load_space_app()
+    rl = _load_safety().RateLimiter(window_seconds=0, daily_cap=5)
+    monkeypatch.setattr(app, "_RATE_LIMITER", rl)
+    monkeypatch.setattr(app, "IBM_AVAILABLE", True)
+    monkeypatch.setattr(app, "_quota_remaining_seconds", lambda: None)
+
+    def _boom(label: str, shots: int = 1024) -> tuple[str, str]:
+        raise RuntimeError("ibm unreachable")
+
+    monkeypatch.setattr(app, "_prepare_and_submit", _boom)
+
+    res = app.verify_on_ibm(app.DEFAULT_LABEL, "consistency", _FakeRequest(host="5.5.5.5"))
+    assert res["status"] == "error"
+    # A failed submit must not consume one of the 5 daily slots.
+    assert rl.daily_remaining(now=datetime.now(UTC)) == 5
