@@ -20,16 +20,16 @@
 | **Release** | v1.0.1 — first stable, 2026-05-02 |
 | **Verifier accuracy** | **100 %** on qverify-mini-50 (PySAT-validated, hand-crafted) |
 | **Test count** | 433 unit tests, CI green (lint + ruff format + mypy strict, all clean) |
-| **Real hardware** | [`d7q961poagoc73fj6oag`](https://quantum.ibm.com/jobs/d7q961poagoc73fj6oag) — `ibm_fez` (Heron r2, 156 qubits), 1024 shots, transpiled depth 360, 2026-05-01 |
+| **Real hardware** | [`d7q961poagoc73fj6oag`](https://quantum.cloud.ibm.com/workloads?search=d7q961poagoc73fj6oag) — `ibm_fez` (Heron r2, 156 qubits), 1024 shots, transpiled depth 360, 2026-05-01 |
 | **Public deployment** | Hugging Face Space at [Laborator/qverify](https://huggingface.co/spaces/Laborator/qverify) — per-IP rate limit + global daily cap + IBM quota guard |
-| **Pipeline** | `Translator (Gemma 4 E2B + outlines)` → `Grounding` → `Grover oracle synthesis` → `PennyLane simulator` ∥ `IBM Heron r2` |
+| **Pipeline** | `Translator (Gemma 4 E4B + outlines)` → `Grounding` → `Grover oracle synthesis` → `PennyLane simulator` ∥ `IBM Heron r2` |
 | **License** | Apache 2.0 — datasets attributed under their own licenses ([benchmarks/LICENSE-DATA.md](benchmarks/LICENSE-DATA.md)) |
 | **Position** | Project 1 of 3 in the Quantum Co-Processor research program |
 
 ## Why this is real engineering
 
 - **Verified on real quantum hardware**, not just on a simulator. Single-shot
-  reproducible job [`d7q961poagoc73fj6oag`](https://quantum.ibm.com/jobs/d7q961poagoc73fj6oag)
+  reproducible job [`d7q961poagoc73fj6oag`](https://quantum.cloud.ibm.com/workloads?search=d7q961poagoc73fj6oag)
   on `ibm_fez` (156 qubits, IBM Heron r2). Anyone with an IBM Quantum account
   can open the URL and see the same circuit, the same shots, and the same
   measurement histogram.
@@ -61,7 +61,7 @@
 
 ```
                               ┌────────────────────┐
-  natural-language reasoning  │  Gemma 4 E2B       │
+  natural-language reasoning  │  Gemma 4 E4B       │
   step                        │  + outlines        │   first-order CNF
   ─────────────────────────►  │  (translator)      │  ────────────────►
                               └────────────────────┘
@@ -396,7 +396,7 @@ qverify/
   verifier/        # Grover's search, grounding, encoding
   utils/           # configuration, logging, model IDs
 docs/              # architecture, grounding, controller, hardware notes
-tests/             # 370+ unit tests, GPU and hardware smoke tests gated
+tests/             # 433 unit tests, GPU and hardware smoke tests gated
 space/             # HuggingFace Space (Gradio demo)
 assets/            # architecture diagram, badges
 scripts/           # one-off diagnostics (gitignored)

@@ -16,8 +16,8 @@ Why answer-phase, not thinking-phase? Gemma 4's thinking phase is freeform meta-
               │
               ▼
    ┌───────────────────────┐    StreamChunk(thinking|answer)
-   │  Gemma 4 E4B (E2B in  ├────────────────┐
-   │     thinking mode)    │                │
+   │  Gemma 4 E4B reasoner ├────────────────┐
+   │    (thinking mode)    │                │
    └───────▲───────────────┘                ▼
            │                       ┌────────────────────┐
            │  correction           │  paragraph buffer  │
@@ -26,7 +26,7 @@ Why answer-phase, not thinking-phase? Gemma 4's thinking phase is freeform meta-
            │                                 │ step
            │                                 ▼
            │                    ┌────────────────────────┐
-           │                    │  Translator (Gemma E2B)│
+           │                    │  Translator (Gemma E4B)│
            │                    │   premise list + step  │
            │                    └─────────┬──────────────┘
            │                              │ CNF

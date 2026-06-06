@@ -9,7 +9,7 @@ The verifier ships with two interchangeable backends: a fast PennyLane simulator
 | Date       | Backend   | Job ID         | Test / formula                              |
 |------------|-----------|----------------|-----|
 | 2026-04-28 | ibm_fez   | [d7o7dsqk4prs73dt4s6g](https://quantum.cloud.ibm.com/workloads?search=d7o7dsqk4prs73dt4s6g) | `test_simple_sat_on_real_hardware` (saturated SAT smoke) |
-| 2026-05-01 | ibm_fez   | [d7q961poagoc73fj6oag](https://quantum.ibm.com/jobs/d7q961poagoc73fj6oag) | `(P ∨ Q) ∧ (¬P ∨ Q)` — 3/4 satisfying assignments, classical post-check ranks the satisfier at #2 (see "Saturated formulas" below) |
+| 2026-05-01 | ibm_fez   | [d7q961poagoc73fj6oag](https://quantum.cloud.ibm.com/workloads?search=d7q961poagoc73fj6oag) | `(P ∨ Q) ∧ (¬P ∨ Q)` — 3/4 satisfying assignments, classical post-check ranks the satisfier at #2 (see "Saturated formulas" below) |
 
 ## Free IBM Quantum account
 
