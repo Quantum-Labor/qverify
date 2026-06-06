@@ -136,3 +136,27 @@ def test_window_zero_keeps_table_empty() -> None:
     # Each call clears the table then records only the current IP, so it never
     # accumulates regardless of how many distinct IPs are seen.
     assert len(rl._last_ip) <= 1
+
+
+# --- Commit 4: X-Forwarded-For last hop -------------------------------------
+
+
+class _FakeRequest:
+    def __init__(self, xff: str | None = None, host: str | None = None) -> None:
+        self.headers = {"x-forwarded-for": xff} if xff is not None else {}
+        self.client = type("C", (), {"host": host})() if host is not None else None
+
+
+def test_client_ip_uses_last_xff_hop() -> None:
+    app = _load_space_app()
+    # Trusted proxy appends the real client IP last; earlier hops are spoofable.
+    assert app._client_ip(_FakeRequest("1.2.3.4, 9.9.9.9, 203.0.113.7")) == "203.0.113.7"
+    assert app._client_ip(_FakeRequest("203.0.113.7")) == "203.0.113.7"
+
+
+def test_client_ip_falls_back_to_client_host_when_no_xff() -> None:
+    app = _load_space_app()
+    assert app._client_ip(_FakeRequest(host="198.51.100.5")) == "198.51.100.5"
+    # A request with neither header nor client must not raise; it yields a
+    # stable string bucket (behaviour outside the scope of this fix).
+    assert isinstance(app._client_ip(_FakeRequest()), str)

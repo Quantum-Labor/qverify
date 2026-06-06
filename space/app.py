@@ -191,12 +191,19 @@ _RATE_LIMITER = _safety_mod.RateLimiter(
 
 
 def _client_ip(request: Any) -> str:
-    """Best-effort visitor IP from the Gradio Request (HF reverse proxy)."""
+    """Best-effort visitor IP from the Gradio Request (HF reverse proxy).
+
+    Reads the *last* X-Forwarded-For hop rather than the first. A client can
+    forge the leftmost entries by sending its own X-Forwarded-For header, but
+    the rightmost entry is appended by the trusted proxy in front of the Space,
+    so it is the hardest for a caller to spoof. Taking the first hop let an
+    attacker present a fresh IP per request and bypass the per-IP throttle.
+    """
     try:
         headers = getattr(request, "headers", {}) or {}
         xff = headers.get("x-forwarded-for") or headers.get("X-Forwarded-For")
         if xff:
-            return str(xff).split(",")[0].strip()
+            return str(xff).split(",")[-1].strip()
         return str(getattr(request, "client", None) and request.client.host) or "unknown"
     except Exception:
         return "unknown"
