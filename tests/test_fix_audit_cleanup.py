@@ -93,3 +93,46 @@ def test_simulator_handler_still_works_after_cleanup() -> None:
     res = app.verify_on_simulator(app.DEFAULT_LABEL, "consistency")
     assert res["status"] == "completed"
     assert res["backend"] == "default.qubit"
+
+
+# --- Commit 3: per-IP table is bounded by eviction --------------------------
+
+
+def _load_safety():
+    import importlib.util
+    import sys
+    from pathlib import Path
+
+    path = Path(__file__).resolve().parent.parent / "space" / "safety.py"
+    spec = importlib.util.spec_from_file_location("_qv_safety_fixtest", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    sys.modules["_qv_safety_fixtest"] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def test_per_ip_table_is_bounded_by_eviction() -> None:
+    from datetime import UTC, datetime, timedelta
+
+    rate_limiter_cls = _load_safety().RateLimiter
+    rl = rate_limiter_cls(window_seconds=300, daily_cap=10_000)
+    base = datetime(2026, 6, 6, 12, 0, tzinfo=UTC)
+    # 50 distinct IPs spaced 60s apart span 2940s, far past the 300s window.
+    for i in range(50):
+        rl.check_and_register(ip=f"10.0.0.{i}", now=base + timedelta(seconds=60 * i))
+    # Only IPs seen within the last window survive (5 at 60s spacing + current).
+    assert len(rl._last_ip) <= 6
+
+
+def test_window_zero_keeps_table_empty() -> None:
+    from datetime import UTC, datetime
+
+    rate_limiter_cls = _load_safety().RateLimiter
+    rl = rate_limiter_cls(window_seconds=0, daily_cap=10_000)
+    now = datetime(2026, 6, 6, 12, 0, tzinfo=UTC)
+    for i in range(20):
+        rl.check_and_register(ip=f"10.0.1.{i}", now=now)
+    # Each call clears the table then records only the current IP, so it never
+    # accumulates regardless of how many distinct IPs are seen.
+    assert len(rl._last_ip) <= 1

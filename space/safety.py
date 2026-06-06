@@ -95,6 +95,7 @@ class RateLimiter:
         """
         with self._lock:
             self._roll_day_if_needed(now)
+            self._evict_stale_ips(now.timestamp())
 
             if quota_remaining_seconds is not None and quota_remaining_seconds < self._quota_floor:
                 return SafetyVerdict(
@@ -162,8 +163,23 @@ class RateLimiter:
         if self._day != today:
             self._day = today
             self._count = 0
-            # Stale per-IP timestamps fade naturally: window_seconds is
-            # short relative to a day, so we leave them alone.
+            # Per-IP timestamps are pruned by _evict_stale_ips on every
+            # check_and_register, so the table is bounded independently of the
+            # daily rollover.
+
+    def _evict_stale_ips(self, now_ts: float) -> None:
+        """Drop per-IP timestamps older than the window.
+
+        Without this the table grows by one entry per unique visitor IP for
+        the lifetime of the process. An entry older than ``window_seconds`` can
+        never block a future request anyway, so removing it is behaviour-
+        preserving and bounds memory to the IPs seen within the last window.
+        """
+        if self._window <= 0:
+            self._last_ip.clear()
+            return
+        cutoff = now_ts - self._window
+        self._last_ip = {ip: ts for ip, ts in self._last_ip.items() if ts > cutoff}
 
     def _load_persisted(self) -> None:
         if self._persist_path is None:
