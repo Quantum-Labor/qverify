@@ -11,6 +11,7 @@
 [![License: Apache-2.0](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](LICENSE)
 [![Built with Gemma 4](https://img.shields.io/badge/Built%20with-Gemma%204-4285F4)](https://ai.google.dev/gemma)
 [![Demo](https://img.shields.io/badge/HF%20Space-Laborator%2Fqverify-yellow)](https://huggingface.co/spaces/Laborator/qverify)
+[![Deploy](https://github.com/Quantum-Labor/qverify/actions/workflows/deploy-space.yml/badge.svg)](https://github.com/Quantum-Labor/qverify/actions/workflows/deploy-space.yml)
 [![Release](https://img.shields.io/badge/release-v1.0.1-purple)](https://github.com/Quantum-Labor/qverify/releases/tag/v1.0.1)
 
 ## v1.0 status sheet
