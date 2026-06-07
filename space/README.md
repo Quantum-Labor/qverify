@@ -15,6 +15,7 @@ tags:
   - llm-verification
   - logic
   - grover
+  - auto-deploy
 ---
 
 # QVerify — verifier-only Space
