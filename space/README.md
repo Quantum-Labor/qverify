@@ -54,6 +54,13 @@ IBM hardware credit is shared across all users on the Open Plan
 (approximately 10 minutes of quantum time per month total). The simulator
 path runs locally in the Space container and has no external cost.
 
+A **Verified on IBM Quantum Hardware** gallery further down the page lists past
+Grover verification runs executed on Heron r2 devices (`ibm_fez`,
+`ibm_kingston`), each with its Job ID linked to the public IBM Quantum
+Workloads dashboard so anyone can confirm it. Two runs are featured with their
+full CNF, mode, verdict, and measured counts; the remainder are listed as
+verified runs with backend, date, shots, and circuit depth.
+
 ## What is not in this Space
 
 The translator — Gemma 4 E4B with grammar-constrained generation — converts
