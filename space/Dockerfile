@@ -31,9 +31,16 @@ COPY data/ ./data/
 # qiskit, qiskit-ibm-runtime — ~60–120 s on CPU Basic) is visible in
 # the Space's container logs in real time, instead of appearing only
 # after Gradio finishes booting.
+#
+# SYSTEM=spaces: HF sets this only on Gradio/Streamlit-SDK Spaces, not on
+# docker Spaces. Gradio's get_space() keys real OAuth off it (oauth.py); without
+# it, gr.LoginButton takes the *mocked* OAuth path and crashes at startup
+# (ValueError: must be logged in to HF). Forcing it makes Gradio use the real HF
+# OAuth flow with the OAUTH_* env that `hf_oauth: true` injects.
 ENV GRADIO_SERVER_NAME=0.0.0.0 \
     GRADIO_SERVER_PORT=7860 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    SYSTEM=spaces
 EXPOSE 7860
 
 CMD ["python", "-u", "app.py"]
