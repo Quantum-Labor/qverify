@@ -8,6 +8,7 @@ app_port: 7860
 pinned: false
 license: apache-2.0
 hardware: cpu-basic
+hf_oauth: true
 tags:
   - quantum-computing
   - qiskit
@@ -53,6 +54,12 @@ dropped mid-run.
 IBM hardware credit is shared across all users on the Open Plan
 (approximately 10 minutes of quantum time per month total). The simulator
 path runs locally in the Space container and has no external cost.
+
+Because that quota is tiny and shared, **the IBM hardware button is owner-only**:
+it is visible and usable only when the maintainer (`Laborator`) is signed in via
+the "Sign in with Hugging Face" button (enabled by `hf_oauth: true`). Everyone
+else gets the full simulator and the verified-runs gallery below — the simulator
+path is unrestricted. This protects the free-tier budget from being drained.
 
 A **Verified on IBM Quantum Hardware** gallery further down the page lists past
 Grover verification runs executed on Heron r2 devices (`ibm_fez`,

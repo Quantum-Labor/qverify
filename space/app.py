@@ -190,6 +190,35 @@ _RATE_LIMITER = _safety_mod.RateLimiter(
 )
 
 
+# -- OAuth owner gate -------------------------------------------------------
+# Only the Space owner may spend the shared free-tier IBM quota. On a Space
+# with `hf_oauth: true`, Gradio's built-in OAuth populates a gr.OAuthProfile
+# once the visitor signs in via gr.LoginButton, and injects it into handlers /
+# `load` callbacks annotated `gr.OAuthProfile | None`. There is NO
+# auto-forwarded OAuth identity in Docker Spaces (no header/cookie/env) — the
+# username is known only from this profile after sign-in. See spaces-oauth docs.
+OWNER_USERNAME = "Laborator"
+
+
+def get_authenticated_user(profile: Any) -> str | None:
+    """Return the signed-in Hugging Face username, or None.
+
+    ``profile`` is the gr.OAuthProfile Gradio injects (or None when the visitor
+    is not signed in). Robust to None and malformed objects — never raises.
+    """
+    if profile is None:
+        return None
+    username = getattr(profile, "username", None)
+    if isinstance(username, str) and username:
+        return username
+    return None
+
+
+def is_owner(profile: Any) -> bool:
+    """True iff the signed-in user is the Space owner (OWNER_USERNAME)."""
+    return get_authenticated_user(profile) == OWNER_USERNAME
+
+
 def _client_ip(request: Any) -> str:
     """Best-effort visitor IP from the Gradio Request (HF reverse proxy).
 
@@ -465,13 +494,23 @@ def _prepare_and_submit(label: str, shots: int = 1024) -> tuple[str, str]:
     return str(job.job_id()), str(backend_name)
 
 
-def verify_on_ibm(label: str, mode: str, request: gr.Request | None = None) -> dict[str, Any]:
+def verify_on_ibm(
+    label: str,
+    mode: str,
+    request: gr.Request | None = None,
+    profile: gr.OAuthProfile | None = None,
+) -> dict[str, Any]:
     """Submit job to IBM, return Job ID immediately (no polling).
 
+    Owner-only (defense in depth): the UI hides this button from non-owners,
+    but we re-check the injected OAuth profile here and refuse otherwise.
     Gated by :class:`safety.RateLimiter`: per-IP throttle (1 per 5 min),
     global daily cap (5 per UTC day), and IBM monthly-quota floor (60 s).
     """
     from datetime import datetime as _dt
+
+    if not is_owner(profile):
+        raise gr.Error("IBM hardware runs are owner-only.")
 
     if label not in EXAMPLES:
         return {"status": "error", "error": f"unknown example: {label}"}
@@ -719,23 +758,36 @@ with gr.Blocks(title="QVerify · Quantum Logic Verifier") as demo:
             )
 
             gr.Markdown("### 3. Run")
-            with gr.Row():
-                btn_sim = gr.Button(
-                    "RUN ON SIMULATOR (free, instant)",
-                    variant="primary",
-                )
+            btn_sim = gr.Button(
+                "RUN ON SIMULATOR (free, instant)",
+                variant="primary",
+            )
+
+            # OAuth owner gate: the IBM hardware button is shown only to the
+            # signed-in Space owner. The LoginButton mounts Gradio's OAuth
+            # routes and lets the owner sign in; the owner column's visibility
+            # is decided on load() from the injected gr.OAuthProfile.
+            gr.LoginButton()
+            with gr.Column(visible=False) as owner_ibm_col:
                 btn_hw = gr.Button(
                     "RUN ON QUANTUM COMPUTER (IBM Heron r2, ~2 min)",
                     variant="secondary",
                     interactive=IBM_AVAILABLE,
                 )
-            gr.Markdown(_ibm_status_md)
-            safety_md = gr.Markdown(_safety_status_md())
-            gr.Markdown(
-                "Submission returns a Job ID immediately. The circuit then "
-                "runs on IBM hardware (typically 1-3 minutes for queue + "
-                "execution). Track live status and retrieve results at "
-                "[IBM Quantum Workloads](https://quantum.cloud.ibm.com/workloads)."
+                gr.Markdown(_ibm_status_md)
+                safety_md = gr.Markdown(_safety_status_md())
+                gr.Markdown(
+                    "Submission returns a Job ID immediately. The circuit then "
+                    "runs on IBM hardware (typically 1-3 minutes for queue + "
+                    "execution). Track live status and retrieve results at "
+                    "[IBM Quantum Workloads](https://quantum.cloud.ibm.com/workloads)."
+                )
+            nonowner_note = gr.Markdown(
+                "**IBM hardware runs are owner-only.** Free-tier quota is 10 minutes "
+                "per month across all visitors, so the hardware button is reserved "
+                "for the maintainer. See the [Verified on IBM Quantum Hardware]"
+                "(#verified-on-ibm-quantum-hardware) gallery for past runs anyone "
+                "can independently verify on `quantum.cloud.ibm.com`."
             )
 
         with gr.Column(scale=1):
@@ -765,6 +817,17 @@ with gr.Blocks(title="QVerify · Quantum Logic Verifier") as demo:
         inputs=None,
         outputs=safety_md,
     )
+
+    def _gate_ibm(profile: gr.OAuthProfile | None) -> tuple[Any, Any]:
+        """Show the IBM column to the owner, the note to everyone else.
+
+        ``profile`` is injected by Gradio's OAuth (None until the visitor signs
+        in). Runs on page load, so it re-evaluates after the owner logs in.
+        """
+        owner = is_owner(profile)
+        return gr.update(visible=owner), gr.update(visible=not owner)
+
+    demo.load(_gate_ibm, inputs=None, outputs=[owner_ibm_col, nonowner_note])
 
     gr.Markdown("---")
     gr.Markdown(

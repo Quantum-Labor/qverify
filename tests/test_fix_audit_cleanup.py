@@ -197,7 +197,12 @@ def test_verify_on_ibm_refunds_daily_slot_when_submit_fails(
 
     monkeypatch.setattr(app, "_prepare_and_submit", _boom)
 
-    res = app.verify_on_ibm(app.DEFAULT_LABEL, "consistency", _FakeRequest(host="5.5.5.5"))
+    # verify_on_ibm is now owner-gated, so submit as the owner to reach the
+    # refund path.
+    owner = type("P", (), {"username": app.OWNER_USERNAME})()
+    res = app.verify_on_ibm(
+        app.DEFAULT_LABEL, "consistency", request=_FakeRequest(host="5.5.5.5"), profile=owner
+    )
     assert res["status"] == "error"
     # A failed submit must not consume one of the 5 daily slots.
     assert rl.daily_remaining(now=datetime.now(UTC)) == 5
