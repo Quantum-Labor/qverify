@@ -190,6 +190,35 @@ _RATE_LIMITER = _safety_mod.RateLimiter(
 )
 
 
+# -- OAuth owner gate -------------------------------------------------------
+# Only the Space owner may spend the shared free-tier IBM quota. On a Space
+# with `hf_oauth: true`, Gradio's built-in OAuth populates a gr.OAuthProfile
+# once the visitor signs in via gr.LoginButton, and injects it into handlers /
+# `load` callbacks annotated `gr.OAuthProfile | None`. There is NO
+# auto-forwarded OAuth identity in Docker Spaces (no header/cookie/env) — the
+# username is known only from this profile after sign-in. See spaces-oauth docs.
+OWNER_USERNAME = "Laborator"
+
+
+def get_authenticated_user(profile: Any) -> str | None:
+    """Return the signed-in Hugging Face username, or None.
+
+    ``profile`` is the gr.OAuthProfile Gradio injects (or None when the visitor
+    is not signed in). Robust to None and malformed objects — never raises.
+    """
+    if profile is None:
+        return None
+    username = getattr(profile, "username", None)
+    if isinstance(username, str) and username:
+        return username
+    return None
+
+
+def is_owner(profile: Any) -> bool:
+    """True iff the signed-in user is the Space owner (OWNER_USERNAME)."""
+    return get_authenticated_user(profile) == OWNER_USERNAME
+
+
 def _client_ip(request: Any) -> str:
     """Best-effort visitor IP from the Gradio Request (HF reverse proxy).
 
