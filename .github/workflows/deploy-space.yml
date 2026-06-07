@@ -1,0 +1,74 @@
+name: Deploy to HF Space
+
+# Mirror the Space files (space/, assets/, benchmarks/) from qverify main to the
+# Hugging Face Space Laborator/qverify. Hand-rolled with plain git + rsync for
+# transparency. Requires the repository secret HF_TOKEN (write scope on the
+# Space). See docs/deploy.md.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "space/**"
+      - "assets/**"
+      - "benchmarks/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-hf-space
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout qverify
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config --global user.name "qverify-deploy"
+          git config --global user.email "deploy@quantumlabor.dev"
+
+      - name: Clone HF Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "${HF_TOKEN}" ]; then
+            echo "HF_TOKEN secret is not set; cannot deploy." >&2
+            exit 1
+          fi
+          git clone "https://Laborator:${HF_TOKEN}@huggingface.co/spaces/Laborator/qverify" hf-space
+
+      - name: Sync Space files
+        run: |
+          # Same rules as the manual deploy: mirror space/ to the Space root,
+          # then re-copy assets/ and benchmarks/ from the repo root. .gitattributes
+          # is preserved (the Space's Git-LFS config lives only on the HF side).
+          rsync -av --delete \
+            --exclude='.git/' \
+            --exclude='__pycache__/' \
+            --exclude='assets/' \
+            --exclude='benchmarks/' \
+            --exclude='.gitattributes' \
+            space/ hf-space/
+          rsync -av --delete assets/ hf-space/assets/
+          rsync -av --delete benchmarks/ hf-space/benchmarks/
+
+      - name: Commit and push if changed
+        working-directory: hf-space
+        env:
+          SOURCE_SHA: ${{ github.sha }}
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "no changes to deploy"
+            exit 0
+          fi
+          git commit -m "deploy: sync from qverify ${SOURCE_SHA}"
+          git push origin main
