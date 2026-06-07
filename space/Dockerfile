@@ -21,8 +21,10 @@ RUN pip install --no-cache-dir --no-deps \
 
 COPY app.py .
 COPY safety.py .
+COPY gallery.py .
 COPY assets/ ./assets/
 COPY benchmarks/ ./benchmarks/
+COPY data/ ./data/
 
 # HuggingFace Spaces expect the app to listen on 0.0.0.0:7860.
 # PYTHONUNBUFFERED + `python -u` so cold-import progress (pennylane,
