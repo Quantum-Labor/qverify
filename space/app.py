@@ -657,6 +657,26 @@ The JSON above is the verifier's full output. Reading it:
 """
 
 
+def _render_gallery_md() -> str:
+    """Render the IBM hardware gallery as Markdown.
+
+    Loaded by file path (like safety.py) because gallery.py sits at the Space
+    root on Hugging Face but under space/ locally; a plain ``import gallery``
+    would not resolve in both layouts.
+    """
+    import importlib.util as _ilu
+
+    here = Path(__file__).resolve().parent
+    for candidate in (here / "gallery.py", here / "space" / "gallery.py"):
+        if candidate.exists():
+            spec = _ilu.spec_from_file_location("_qv_gallery", candidate)
+            assert spec is not None and spec.loader is not None
+            module = _ilu.module_from_spec(spec)
+            spec.loader.exec_module(module)
+            return str(module.render_gallery())
+    return "## Verified on IBM Quantum Hardware\n\n_Gallery data unavailable._\n"
+
+
 with gr.Blocks(title="QVerify · Quantum Logic Verifier") as demo:
     gr.HTML(_HERO_HTML)
     gr.Markdown(_INTRO_MD)
@@ -769,6 +789,8 @@ with gr.Blocks(title="QVerify · Quantum Logic Verifier") as demo:
         "(https://github.com/Quantum-Labor/qverify/blob/main/docs/benchmarks.md)"
         " for methodology.\n\n" + _load_benchmark_summaries()
     )
+    gr.Markdown("---")
+    gr.Markdown(_render_gallery_md())
     gr.Markdown("---")
     gr.Markdown(
         "### About\n\n"

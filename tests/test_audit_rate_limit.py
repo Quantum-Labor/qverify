@@ -25,7 +25,7 @@ import pytest
 _SAFETY_PATH = Path(__file__).resolve().parent.parent / "space" / "safety.py"
 
 
-def _load_safety():  # noqa: ANN202
+def _load_safety():
     spec = importlib.util.spec_from_file_location("_qv_safety_audit", _SAFETY_PATH)
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)

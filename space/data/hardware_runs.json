@@ -1,0 +1,164 @@
+[
+  {
+    "job_id": "d7sd2aiudops7396mu40",
+    "backend": "ibm_fez",
+    "date": "2026-05-04",
+    "shots": 1024,
+    "depth": 112,
+    "atoms": 2,
+    "tier": "verified"
+  },
+  {
+    "job_id": "d7qifecf3ras73b5r7g0",
+    "backend": "ibm_fez",
+    "date": "2026-05-02",
+    "shots": 1024,
+    "depth": 122,
+    "atoms": 2,
+    "tier": "verified"
+  },
+  {
+    "job_id": "d7q9fl43lfgs73fgthc0",
+    "backend": "ibm_fez",
+    "date": "2026-05-01",
+    "shots": 1024,
+    "depth": 357,
+    "atoms": 2,
+    "tier": "verified"
+  },
+  {
+    "job_id": "d7q961poagoc73fj6oag",
+    "backend": "ibm_fez",
+    "date": "2026-05-01",
+    "shots": 1024,
+    "depth": 360,
+    "atoms": 2,
+    "tier": "featured",
+    "cnf": "(P ∨ Q) ∧ (¬P ∨ Q)",
+    "mode": "consistency",
+    "verdict": "consistent",
+    "notes": "Saturated formula (3/4 satisfying): the histogram is near-uniform, so the classical post-check walks past the top bitstring to a satisfier at rank #2.",
+    "counts_top": [
+      [
+        "00",
+        292
+      ],
+      [
+        "01",
+        263
+      ],
+      [
+        "11",
+        254
+      ]
+    ]
+  },
+  {
+    "job_id": "d7p1tu6dvl0c738oflbg",
+    "backend": "ibm_kingston",
+    "date": "2026-04-29",
+    "shots": 1024,
+    "depth": 109,
+    "atoms": 2,
+    "tier": "verified"
+  },
+  {
+    "job_id": "d7p1qlj9ak2c739r6dr0",
+    "backend": "ibm_kingston",
+    "date": "2026-04-29",
+    "shots": 1024,
+    "depth": 117,
+    "atoms": 2,
+    "tier": "verified"
+  },
+  {
+    "job_id": "d7p1ifj9ak2c739r63i0",
+    "backend": "ibm_kingston",
+    "date": "2026-04-29",
+    "shots": 1024,
+    "depth": 111,
+    "atoms": 2,
+    "tier": "verified"
+  },
+  {
+    "job_id": "d7p1georor3c73c0jf3g",
+    "backend": "ibm_kingston",
+    "date": "2026-04-29",
+    "shots": 1024,
+    "depth": 101,
+    "atoms": 2,
+    "tier": "verified"
+  },
+  {
+    "job_id": "d7p0h4gror3c73c0i240",
+    "backend": "ibm_kingston",
+    "date": "2026-04-29",
+    "shots": 1024,
+    "depth": 109,
+    "atoms": 2,
+    "tier": "verified"
+  },
+  {
+    "job_id": "d7ouncj9ak2c739r27ng",
+    "backend": "ibm_kingston",
+    "date": "2026-04-29",
+    "shots": 1024,
+    "depth": 112,
+    "atoms": 2,
+    "tier": "verified"
+  },
+  {
+    "job_id": "d7ou7bm0b9ts73cisnog",
+    "backend": "ibm_fez",
+    "date": "2026-04-29",
+    "shots": 1024,
+    "depth": 106,
+    "atoms": 2,
+    "tier": "verified"
+  },
+  {
+    "job_id": "d7otdj39ak2c739r0lr0",
+    "backend": "ibm_fez",
+    "date": "2026-04-29",
+    "shots": 1024,
+    "depth": 116,
+    "atoms": 2,
+    "tier": "verified"
+  },
+  {
+    "job_id": "d7o7dsqk4prs73dt4s6g",
+    "backend": "ibm_fez",
+    "date": "2026-04-28",
+    "shots": 1024,
+    "depth": 389,
+    "atoms": 2,
+    "tier": "featured",
+    "cnf": "(P ∨ Q) ∧ (¬P ∨ Q)",
+    "mode": "consistency",
+    "verdict": "consistent",
+    "notes": "First end-to-end hardware smoke test. 3 of 4 assignments satisfy; consistency mode reports no contradiction.",
+    "counts_top": [
+      [
+        "11",
+        314
+      ],
+      [
+        "01",
+        272
+      ],
+      [
+        "00",
+        226
+      ]
+    ]
+  },
+  {
+    "job_id": "d7o74p62jamc73bpa3sg",
+    "backend": "ibm_fez",
+    "date": "2026-04-28",
+    "shots": 1024,
+    "depth": 357,
+    "atoms": 2,
+    "tier": "verified"
+  }
+]

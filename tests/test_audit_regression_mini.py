@@ -27,7 +27,7 @@ from qverify.verifier.encoding import AtomEncoder
 _MAX_WIRES_FAST = 16  # atoms + clauses + 1 flag; excludes e04 (22) only
 
 
-def _total_wires(cnf) -> int:  # noqa: ANN001 - CNF, kept light for a test helper
+def _total_wires(cnf) -> int:
     return AtomEncoder(cnf).n_qubits + len(cnf.clauses) + 1
 
 

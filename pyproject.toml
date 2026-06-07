@@ -114,6 +114,7 @@ addopts = "-ra --strict-markers"
 markers = [
     "slow: tests requiring real hardware or network access",
     "gpu: tests requiring CUDA-capable GPU",
+    "unit: fast pure-data/string unit tests (no GPU, no network)",
 ]
 
 [tool.coverage.run]
