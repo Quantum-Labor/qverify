@@ -35,17 +35,21 @@ jobs:
           git config --global user.name "qverify-deploy"
           git config --global user.email "deploy@quantumlabor.dev"
 
-      # HF git auth: any non-org username works with a write token.
-      # 'Laborator' is the org namespace and is rejected by HF on push.
-      - name: Clone HF Space
+      # HF rejects URL-embedded credentials on push (they work only for the
+      # public clone/read). Authenticate via credential.helper=store — the same
+      # challenge/response mechanism that pushes successfully from a laptop.
+      - name: Configure HF credentials
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          if [ -z "${HF_TOKEN}" ]; then
-            echo "HF_TOKEN secret is not set; cannot deploy." >&2
-            exit 1
-          fi
-          git clone "https://hf_user:${HF_TOKEN}@huggingface.co/spaces/Laborator/qverify" hf-space
+          if [ -z "$HF_TOKEN" ]; then echo "HF_TOKEN not set"; exit 1; fi
+          git config --global credential.helper store
+          printf 'https://hf_user:%s@huggingface.co\n' "$HF_TOKEN" \
+            > ~/.git-credentials
+          chmod 600 ~/.git-credentials
+
+      - name: Clone HF Space
+        run: git clone https://huggingface.co/spaces/Laborator/qverify hf-space
 
       - name: Sync Space files
         run: |
@@ -74,3 +78,7 @@ jobs:
           fi
           git commit -m "deploy: sync from qverify ${SOURCE_SHA}"
           git push origin main
+
+      - name: Wipe credentials
+        if: always()
+        run: rm -f ~/.git-credentials
