@@ -818,5 +818,11 @@ with gr.Blocks(title="QVerify · Quantum Logic Verifier") as demo:
     )
 
 
+# Gradio's built-in footer ("Use via API / Built with Gradio / Settings") is
+# localized to each visitor's browser language — it renders in Cyrillic for
+# RU-locale browsers. Gradio 6.x exposes no server-side locale override, so we
+# hide the footer outright (the only place those localized strings appear).
+_HIDE_FOOTER_CSS = "footer {display: none !important;}"
+
 if __name__ == "__main__":
-    demo.launch(theme=_QV_THEME)
+    demo.launch(theme=_QV_THEME, css=_HIDE_FOOTER_CSS)
