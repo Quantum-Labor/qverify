@@ -1,0 +1,8 @@
+{
+  "ratios_vs_3atoms": {
+    "6": 4.7258654269259965,
+    "9": 17.852608416709376,
+    "12": 62.54744962153978
+  },
+  "note": "build_grover_qiskit_circuit, 1 clause/atom, machine-normalized"
+}

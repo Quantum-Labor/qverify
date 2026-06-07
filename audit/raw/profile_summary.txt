@@ -1,0 +1,70 @@
+
+=== cnf_parse  (2000x, 0.108s total, 0.054 ms/call) ===
+         232001 function calls in 0.106 seconds
+
+   Ordered by: cumulative time
+   List reduced from 39 to 8 due to restriction <8>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+     2000    0.002    0.000    0.106    0.000 /home/softer/qverify/audit/profile_harness.py:83(<lambda>)
+     2000    0.007    0.000    0.104    0.000 /home/softer/qverify/qverify/translator/parser.py:109(parse_llm_output)
+     2000    0.017    0.000    0.030    0.000 /home/softer/qverify/qverify/translator/parser.py:48(_normalize_entity_casing)
+     6000    0.014    0.000    0.029    0.000 {method 'validate_python' of 'pydantic_core._pydantic_core.SchemaValidator' objects}
+     2000    0.001    0.000    0.018    0.000 /home/softer/qverify/qverify/translator/parser.py:185(_build_cnf)
+     2000    0.003    0.000    0.018    0.000 /home/softer/qverify/qverify/translator/parser.py:201(_build_universe)
+     2000    0.001    0.000    0.017    0.000 /home/softer/qverify/.venv/lib/python3.11/site-packages/pydantic/main.py:693(model_validate)
+     2000    0.002    0.000    0.015    0.000 /home/softer/qverify/qverify/translator/parser.py:168(_try_parse_schema_directly)
+
+
+
+=== oracle_build  (10000x, 0.015s total, 0.002 ms/call) ===
+         60001 function calls in 0.013 seconds
+
+   Ordered by: cumulative time
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+    10000    0.004    0.000    0.013    0.000 /home/softer/qverify/audit/profile_harness.py:91(<lambda>)
+    10000    0.006    0.000    0.007    0.000 /home/softer/qverify/qverify/verifier/oracle.py:15(build_sat_oracle)
+    10000    0.002    0.000    0.002    0.000 /home/softer/qverify/qverify/verifier/encoding.py:40(n_qubits)
+    20000    0.001    0.000    0.001    0.000 {built-in method builtins.len}
+    10000    0.001    0.000    0.001    0.000 /home/softer/qverify/qverify/verifier/oracle.py:10(required_ancillas)
+        1    0.000    0.000    0.000    0.000 {method 'disable' of '_lsprof.Profiler' objects}
+
+
+2026-06-06 11:56:36 | INFO     | qverify.verifier | Consistency check FAILED after 6 iterations: no satisfying assignment measured (top: 110110)
+
+=== grover_sim_6atoms  (1x, 0.395s total, 395.064 ms/call) ===
+         251274 function calls (246573 primitive calls) in 0.395 seconds
+
+   Ordered by: cumulative time
+   List reduced from 737 to 8 due to restriction <8>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+        1    0.000    0.000    0.395    0.395 /home/softer/qverify/audit/profile_harness.py:99(<lambda>)
+        1    0.000    0.000    0.395    0.395 /home/softer/qverify/qverify/verifier/grover.py:57(run_grover)
+        1    0.001    0.001    0.394    0.394 /home/softer/qverify/qverify/verifier/backends.py:53(execute_grover)
+        1    0.000    0.000    0.387    0.387 /home/softer/qverify/.venv/lib/python3.11/site-packages/pennylane/workflow/qnode.py:858(__call__)
+        1    0.000    0.000    0.387    0.387 /home/softer/qverify/.venv/lib/python3.11/site-packages/pennylane/workflow/qnode.py:829(_impl_call)
+     10/6    0.000    0.000    0.380    0.063 /home/softer/qverify/.venv/lib/python3.11/site-packages/pennylane/logging/decorators.py:50(wrapper_entry)
+        1    0.000    0.000    0.279    0.279 /home/softer/qverify/.venv/lib/python3.11/site-packages/pennylane/workflow/execution.py:51(execute)
+        1    0.000    0.000    0.276    0.276 /home/softer/qverify/.venv/lib/python3.11/site-packages/pennylane/workflow/run.py:272(run)
+
+
+
+=== ibm_submit_cpu  (200x, 1.548s total, 7.741 ms/call) ===
+         3473763 function calls (3473229 primitive calls) in 1.548 seconds
+
+   Ordered by: cumulative time
+   List reduced from 167 to 8 due to restriction <8>
+
+   ncalls  tottime  percall  cumtime  percall filename:lineno(function)
+      200    0.001    0.000    1.548    0.008 /home/softer/qverify/audit/profile_harness.py:106(<lambda>)
+      200    0.017    0.000    1.547    0.008 /home/softer/qverify/qverify/verifier/grover_circuit.py:10(build_grover_qiskit_circuit)
+    92800    0.313    0.000    0.886    0.000 /home/softer/qverify/.venv/lib/python3.11/site-packages/qiskit/circuit/quantumcircuit.py:2796(_append_standard_gate)
+    60200    0.035    0.000    0.593    0.000 /home/softer/qverify/.venv/lib/python3.11/site-packages/qiskit/circuit/quantumcircuit.py:6174(x)
+     8400    0.033    0.000    0.474    0.000 /home/softer/qverify/qverify/verifier/grover_circuit.py:70(_apply_clause_or)
+     4800    0.007    0.000    0.468    0.000 /home/softer/qverify/.venv/lib/python3.11/site-packages/qiskit/utils/deprecation.py:171(wrapper)
+     8400    0.032    0.000    0.462    0.000 /home/softer/qverify/qverify/verifier/grover_circuit.py:97(_uncompute_clause_or)
+     4800    0.035    0.000    0.451    0.000 /home/softer/qverify/.venv/lib/python3.11/site-packages/qiskit/circuit/quantumcircuit.py:6281(mcx)
+
+

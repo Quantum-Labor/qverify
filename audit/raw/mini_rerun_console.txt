@@ -1,0 +1,60 @@
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 1 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 1 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 1 iterations: no satisfying assignment measured (top: 0)
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 00)
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 00)
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 00)
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 00)
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 110)
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 00)
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 3 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 3 iterations: no satisfying assignment measured (top: 0010)
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 110)
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 00)
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 00)
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 00)
+2026-06-06 12:02:38 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 00)
+2026-06-06 12:02:39 | INFO     | qverify.verifier | Consistency check passed after 3 iterations: satisfying assignment found
+2026-06-06 12:02:39 | INFO     | qverify.verifier | Consistency check FAILED after 6 iterations: no satisfying assignment measured (top: 110110)
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check passed after 18 iterations: satisfying assignment found
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check passed after 1 iterations: satisfying assignment found
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check FAILED after 1 iterations: no satisfying assignment measured (top: 0)
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 00)
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 00)
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check passed after 3 iterations: satisfying assignment found
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check FAILED after 3 iterations: no satisfying assignment measured (top: 0010)
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 110)
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 110)
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check passed after 3 iterations: satisfying assignment found
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 110)
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check passed after 2 iterations: satisfying assignment found
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 110)
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check FAILED after 6 iterations: no satisfying assignment measured (top: 110110)
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check FAILED after 6 iterations: no satisfying assignment measured (top: 110110)
+2026-06-06 12:05:08 | INFO     | qverify.verifier | Consistency check FAILED after 2 iterations: no satisfying assignment measured (top: 110)
+{
+  "n_examples": 50,
+  "accuracy": 1.0,
+  "avg_seconds": 2.9977756375999522,
+  "p95_seconds": 0.2341388109998661,
+  "n_skipped": 0,
+  "wall_clock_total_s": 149.90051957299875,
+  "per_example_max_s": 148.61898580100024,
+  "slowest_example": "e04"
+}

@@ -1,0 +1,4 @@
+qverify/verifier/backends.py:71: error: Untyped decorator makes function "circuit" untyped  [untyped-decorator]
+qverify/verifier/backends.py:72: error: Untyped decorator makes function "circuit" untyped  [untyped-decorator]
+qverify/controller/llm.py:255: error: Call to untyped function "from_pretrained" of "AutoProcessor" in typed context  [no-untyped-call]
+Found 3 errors in 2 files (checked 39 source files)
