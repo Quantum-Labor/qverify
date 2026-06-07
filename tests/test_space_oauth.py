@@ -66,3 +66,15 @@ def test_malformed_profile_is_not_owner() -> None:
 
 def test_owner_constant_value() -> None:
     assert app.OWNER_USERNAME == "Laborator"
+
+
+# -- defense in depth: verify_on_ibm refuses non-owners ---------------------
+
+
+def test_verify_on_ibm_blocks_non_owner() -> None:
+    import gradio as gr
+
+    with pytest.raises(gr.Error):
+        app.verify_on_ibm(app.DEFAULT_LABEL, "consistency", profile=None)
+    with pytest.raises(gr.Error):
+        app.verify_on_ibm(app.DEFAULT_LABEL, "consistency", profile=_Profile("nope"))
