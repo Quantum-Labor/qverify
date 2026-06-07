@@ -35,7 +35,7 @@ _ATOM_COUNTS = (3, 6, 9, 12)
 _TOLERANCE = 1.20  # fail on >20% slowdown vs baseline ratio
 
 
-def _build_inputs(n_atoms: int):  # noqa: ANN201 - tuple, test helper
+def _build_inputs(n_atoms: int):
     """One clause per atom; deterministic gate count for stable timing."""
     clauses = tuple(Clause(literals=(Literal(predicate=f"P{i}"),)) for i in range(n_atoms))
     cnf = CNF(clauses=clauses)
@@ -44,7 +44,7 @@ def _build_inputs(n_atoms: int):  # noqa: ANN201 - tuple, test helper
 
 
 @pytest.mark.parametrize("n_atoms", _ATOM_COUNTS)
-def test_benchmark_oracle_build(benchmark, n_atoms: int) -> None:  # noqa: ANN001
+def test_benchmark_oracle_build(benchmark, n_atoms: int) -> None:
     encoded, n_qubits, n_iter = _build_inputs(n_atoms)
     circuit = benchmark(build_grover_qiskit_circuit, encoded, n_qubits, n_iter)
     # The build must produce the assignment register + clause ancillas + flag.

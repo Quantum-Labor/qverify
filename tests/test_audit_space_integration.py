@@ -87,7 +87,7 @@ def test_three_bundled_examples_are_consistent(app: Any) -> None:
 
 
 @pytest.fixture(scope="module")
-def live_server(app: Any):  # noqa: ANN201
+def live_server(app: Any):
     demo = app.demo
     try:
         demo.launch(
@@ -125,9 +125,7 @@ def test_gradio_client_end_to_end_simulator(app: Any, live_server: str) -> None:
 
     try:
         client = Client(live_server, verbose=False)
-        result = client.predict(
-            app.DEFAULT_LABEL, "consistency", api_name="/verify_on_simulator"
-        )
+        result = client.predict(app.DEFAULT_LABEL, "consistency", api_name="/verify_on_simulator")
     except Exception as exc:  # pragma: no cover - environment dependent
         pytest.skip(f"gradio_client could not reach the local server: {exc!r}")
 

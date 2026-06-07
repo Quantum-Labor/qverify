@@ -37,8 +37,12 @@ _SAMPLE_JSON = json.dumps(
     {
         "entities": ["Tom", "Whiskers"],
         "clauses": [
-            {"literals": [{"predicate": "Cat", "args": ["x"], "negated": True},
-                          {"predicate": "HasFur", "args": ["x"], "negated": False}]},
+            {
+                "literals": [
+                    {"predicate": "Cat", "args": ["x"], "negated": True},
+                    {"predicate": "HasFur", "args": ["x"], "negated": False},
+                ]
+            },
             {"literals": [{"predicate": "Cat", "args": ["Tom"], "negated": False}]},
         ],
     }

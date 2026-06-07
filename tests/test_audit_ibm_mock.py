@@ -67,7 +67,7 @@ class _FakeSampler:
     def __init__(self, *_args: Any, **_kwargs: Any) -> None:
         pass
 
-    def run(self, _pubs: Any, *, shots: int) -> _FakeJob:  # noqa: ARG002
+    def run(self, _pubs: Any, *, shots: int) -> _FakeJob:
         return _FakeJob()
 
 
@@ -88,10 +88,10 @@ class _FakeService:
         return _FakeBackend("ibm_mock_heron")
 
 
-def _passthrough_pass_manager(*_args: Any, **_kwargs: Any):  # noqa: ANN202
+def _passthrough_pass_manager(*_args: Any, **_kwargs: Any):
     class _PM:
         @staticmethod
-        def run(circuit):  # noqa: ANN001, ANN205
+        def run(circuit):
             return circuit  # real QuantumCircuit -> .depth()/.num_qubits work
 
     return _PM()
@@ -110,14 +110,10 @@ def _patched_ibm(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _simple_circuit():  # noqa: ANN202
+def _simple_circuit():
     from qverify.verifier.grover_circuit import build_grover_qiskit_circuit
 
-    cnf = CNF(
-        clauses=(
-            Clause(literals=(Literal(predicate="A"), Literal(predicate="B"))),
-        )
-    )
+    cnf = CNF(clauses=(Clause(literals=(Literal(predicate="A"), Literal(predicate="B"))),))
     enc = AtomEncoder(cnf)
     return build_grover_qiskit_circuit(enc.encode_clauses(), enc.n_qubits, 2)
 
@@ -167,7 +163,7 @@ def test_ibm_quantum_backend_with_injected_client() -> None:
     """IBMQuantumBackend.execute_grover with a stand-in client (no network)."""
 
     class _StubClient:
-        def least_busy_heron(self, min_qubits: int = 5) -> str:  # noqa: ARG002
+        def least_busy_heron(self, min_qubits: int = 5) -> str:
             return "ibm_stub"
 
         def run(self, circuit: Any, *, backend_name: str, shots: int, **_: Any) -> IBMRunResult:
