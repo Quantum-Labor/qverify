@@ -768,11 +768,12 @@ with gr.Blocks(title="QVerify · Quantum Logic Verifier") as demo:
             # routes and lets the owner sign in; the owner column's visibility
             # is decided on load() from the injected gr.OAuthProfile.
             #
-            # link_target="_blank" required: HF's login page sets X-Frame-Options
-            # so it cannot render inside the Space's iframe. Without _blank the
-            # login click produces a blank page and the OAuth round-trip never
-            # completes. See HF docs: spaces-oauth#oauth-button.
-            gr.LoginButton(link_target="_blank")
+            # link_target="_top" required: HF's login page sets X-Frame-Options
+            # so it cannot render inside the Space's iframe. "_top" navigates the
+            # parent window to HF login (no popup-blocker issues vs "_blank") and
+            # OAuth redirects back to the Space cleanly. See HF docs:
+            # spaces-oauth#oauth-button.
+            gr.LoginButton(link_target="_top")
             with gr.Column(visible=False) as owner_ibm_col:
                 btn_hw = gr.Button(
                     "RUN ON QUANTUM COMPUTER (IBM Heron r2, ~2 min)",
