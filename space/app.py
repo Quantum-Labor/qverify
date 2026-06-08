@@ -767,7 +767,12 @@ with gr.Blocks(title="QVerify · Quantum Logic Verifier") as demo:
             # signed-in Space owner. The LoginButton mounts Gradio's OAuth
             # routes and lets the owner sign in; the owner column's visibility
             # is decided on load() from the injected gr.OAuthProfile.
-            gr.LoginButton()
+            #
+            # link_target="_blank" required: HF's login page sets X-Frame-Options
+            # so it cannot render inside the Space's iframe. Without _blank the
+            # login click produces a blank page and the OAuth round-trip never
+            # completes. See HF docs: spaces-oauth#oauth-button.
+            gr.LoginButton(link_target="_blank")
             with gr.Column(visible=False) as owner_ibm_col:
                 btn_hw = gr.Button(
                     "RUN ON QUANTUM COMPUTER (IBM Heron r2, ~2 min)",
